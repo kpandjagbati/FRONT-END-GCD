@@ -9,9 +9,9 @@ const CSV_ROWS = [
 
 export default function TraitementPage() {
   return (
-    <section className="flex justify-center pt-6">
-      <div className="w-full max-w-4xl rounded-sm bg-white px-10 py-8 text-center shadow-md">
-        <div className="mx-auto max-w-2xl rounded-sm bg-[#c45c5c] px-6 py-4 text-sm leading-relaxed text-white">
+    <section className="flex justify-center pt-2">
+      <div className="yas-card w-full max-w-4xl text-center">
+        <div className="mx-auto max-w-2xl rounded-2xl bg-[#c45c5c] px-6 py-4 text-sm leading-relaxed text-white">
           <p className="font-semibold">!!! INFO !!!</p>
           <p>
             Les fichiers à renseigner sont exclusivement de format CSV et doit contenir
@@ -45,19 +45,17 @@ export default function TraitementPage() {
           </table>
         </div>
 
-        <p className="yas-title mt-8">
-          Veuillez sélectionner le fichier à traiter
-        </p>
+        <p className="yas-title mt-8">Veuillez sélectionner le fichier à traiter</p>
         <div className="mt-3 flex items-center justify-center gap-3 text-sm">
           <input
             type="file"
             accept=".csv"
-            className="max-w-xs text-sm file:mr-3 file:rounded-sm file:border file:border-neutral-400 file:bg-white file:px-2 file:py-0.5"
+            className="max-w-xs text-sm file:mr-3 file:rounded-md file:border file:border-neutral-400 file:bg-white file:px-2 file:py-0.5"
           />
         </div>
 
         <div className="mt-8 flex justify-end">
-          <button type="button" className="btn btn-primary h-10 min-h-10 rounded-md px-5">
+          <button type="button" className="btn h-10 min-h-10 rounded-xl border-none bg-yas-navy px-5 font-semibold text-white">
             Proceder au traitement
           </button>
         </div>

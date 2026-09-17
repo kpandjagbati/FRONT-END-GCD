@@ -94,10 +94,60 @@ export function IconWarning({ className }: IconProps) {
   );
 }
 
+export function IconChevronDown({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
+export function IconLogout({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d="M10 7V4.5h10V19.5H10V17" />
+      <path d="M15 12H3M7 8l-4 4 4 4" />
+    </svg>
+  );
+}
+
+export function IconArrowRight({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d="M4 12h14M13 6l6 6-6 6" />
+    </svg>
+  );
+}
+
 export function IconChevronsRight({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
       <path d="m13 6 6 6-6 6M5 6l6 6-6 6" />
+    </svg>
+  );
+}
+
+export function IconSun({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 3v2M12 19v2M5 12H3M21 12h-2M6.2 6.2l1.4 1.4M16.4 16.4l1.4 1.4M6.2 17.8l1.4-1.4M16.4 7.6l1.4-1.4" />
+    </svg>
+  );
+}
+
+export function IconMoon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d="M18.5 13.5A7.5 7.5 0 1 1 10.5 5.5 6 6 0 0 0 18.5 13.5Z" />
+    </svg>
+  );
+}
+
+export function IconClose({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d="M6 6l12 12M18 6 6 18" />
     </svg>
   );
 }

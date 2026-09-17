@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import ProfileMenu from "@/components/ProfileMenu";
 import { BREADCRUMBS, NAV_ITEMS } from "@/lib/nav";
 import {
   IconChevronsLeft,
@@ -11,10 +12,12 @@ import {
   IconFile,
   IconHome,
   IconLogin,
+  IconLogout,
   IconPhone,
   IconScan,
   IconUser,
 } from "@/components/icons";
+import { logoutSession } from "@/lib/session";
 
 const ICONS = {
   home: IconHome,
@@ -32,87 +35,112 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const crumb = BREADCRUMBS[pathname];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#f4f5f7]">
+    <div className="flex h-screen overflow-hidden bg-yas-page">
       <aside
-        className={`relative flex h-full shrink-0 flex-col bg-yas-yellow text-neutral-800 transition-[width] duration-200 ${
-          collapsed ? "w-[72px]" : "w-[220px]"
+        className={`relative flex h-full shrink-0 flex-col bg-yas-yellow text-yas-navy transition-[width] duration-200 ${
+          collapsed ? "w-[84px]" : "w-[248px]"
         }`}
       >
-        <div className="flex h-12 items-center justify-between px-3">
-          <Link href="/accueil" className="flex items-center">
+        <div className="flex h-16 items-center justify-between px-3">
+          <Link href="/accueil" className="flex min-w-0 items-center gap-2.5">
             <img
               src="/logo-yas.svg"
               alt="Yas"
-              width={36}
-              height={32}
-              className="h-8 w-auto object-contain"
+              width={40}
+              height={36}
+              className="h-9 w-auto object-contain"
             />
+            {!collapsed ? (
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-bold leading-none">GetCallDetail</span>
+                <span className="mt-1 block truncate text-[11px] font-medium text-yas-navy/70">Yas Togo</span>
+              </span>
+            ) : null}
           </Link>
           <button
             type="button"
             aria-label={collapsed ? "Ouvrir le menu" : "Réduire le menu"}
             onClick={() => setCollapsed((value) => !value)}
-            className="btn btn-ghost btn-xs text-neutral-700"
+            className="btn btn-ghost btn-xs text-yas-navy hover:bg-black/5"
           >
             {collapsed ? <IconChevronsRight className="size-4" /> : <IconChevronsLeft className="size-4" />}
           </button>
         </div>
 
-        <nav className="mt-2 flex flex-col gap-1 px-2">
+        <nav className="mt-3 flex flex-1 flex-col gap-1.5 px-2.5">
           {NAV_ITEMS.map((item) => {
             const Icon = ICONS[item.icon];
             const active = pathname === item.href;
+            const isMixx = item.href === "/tmoney";
+
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 title={item.label}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all ${
+                  isMixx ? "mixx-nav" : ""
+                } ${
                   active
-                    ? "bg-yas-active text-white"
-                    : "text-neutral-800 hover:bg-black/5"
+                    ? "bg-white text-yas-navy"
+                    : "text-yas-navy/85 hover:bg-black/5"
                 } ${collapsed ? "justify-center px-0" : ""}`}
               >
-                <Icon className="size-[18px] shrink-0" />
-                {!collapsed ? <span className="truncate">{item.label}</span> : null}
+                {isMixx ? (
+                  <img
+                    src="/logo-mixx.svg"
+                    alt="Mixx by Yas"
+                    className={`mixx-nav-logo h-6 w-auto object-contain object-left ${collapsed ? "max-w-[48px]" : "max-w-[150px]"}`}
+                  />
+                ) : (
+                  <Icon className="size-[18px] shrink-0" />
+                )}
+                {!collapsed && !isMixx ? <span className="truncate">{item.label}</span> : null}
               </Link>
             );
           })}
+          <button
+            type="button"
+            title="Se déconnecter"
+            onClick={logoutSession}
+            className={`mt-3 flex items-center gap-3 rounded-xl bg-yas-navy px-3 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#012d66] ${
+              collapsed ? "justify-center px-0" : ""
+            }`}
+          >
+            <IconLogout className="size-[18px] shrink-0" />
+            {!collapsed ? <span className="truncate">Se déconnecter</span> : null}
+          </button>
         </nav>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-12 shrink-0 items-center justify-end bg-yas-orange px-5">
-          <div className="flex items-center gap-2 text-sm text-neutral-800">
-            <span>aogbone</span>
-            <span className="flex size-8 items-center justify-center rounded-full bg-neutral-900 text-white">
-              <IconUser className="size-4" />
-            </span>
+        <header className="yas-topbar relative z-30 flex h-16 shrink-0 items-center justify-between border-b border-black/5 bg-yas-surface px-6 shadow-[0_8px_24px_rgba(1,55,125,0.04)]">
+          <div className="flex min-w-0 items-center gap-3 text-sm">
+            <Link href="/accueil" className="font-semibold text-yas-navy hover:text-yas-blue">
+              Yas
+            </Link>
+            <span className="h-4 w-px bg-neutral-200" />
+            <Link href="/accueil" aria-label="Accueil" className="text-neutral-400 hover:text-yas-navy">
+              <IconHome className="size-4" />
+            </Link>
+            <Link href="/accueil" className="yas-link hover:underline">
+              GetCallDetail
+            </Link>
+            {crumb ? (
+              <>
+                <span className="text-neutral-300">/</span>
+                <Link href={crumb.href} className="truncate font-semibold text-neutral-700 hover:text-yas-navy">
+                  {crumb.label}
+                </Link>
+              </>
+            ) : null}
+          </div>
+          <div className="flex items-center gap-3">
+            <ProfileMenu />
           </div>
         </header>
 
-        <div className="flex h-12 shrink-0 items-center gap-3 border-b border-black/5 bg-white px-6 text-sm">
-          <Link href="/accueil" className="text-neutral-500 hover:text-neutral-800">
-            Yas
-          </Link>
-          <span className="h-4 w-px bg-neutral-300" />
-          <Link href="/accueil" aria-label="Accueil" className="text-neutral-500 hover:text-neutral-800">
-            <IconHome className="size-4" />
-          </Link>
-          <Link href="/accueil" className="yas-link hover:underline">
-            GetCallDetail
-          </Link>
-          {crumb ? (
-            <>
-              <span className="text-neutral-400">»</span>
-              <Link href={crumb.href} className="text-neutral-600 hover:text-neutral-800">
-                {crumb.label}
-              </Link>
-            </>
-          ) : null}
-        </div>
-
-        <main className="min-h-0 flex-1 overflow-auto p-5">{children}</main>
+        <main className="yas-content min-h-0 flex-1 overflow-auto p-6">{children}</main>
       </div>
     </div>
   );

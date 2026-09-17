@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { IconEye, IconLock, IconUser } from "@/components/icons";
-import { saveSessionPassword } from "@/lib/downloads";
+import { saveSession } from "@/lib/session";
 import { FormEvent, useState } from "react";
 
 export default function LoginPage() {
@@ -12,28 +12,29 @@ export default function LoginPage() {
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    saveSessionPassword(String(formData.get("password") ?? ""));
+    saveSession(String(formData.get("username") ?? ""), String(formData.get("password") ?? ""));
     router.push("/accueil");
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-yas-login p-6">
-      <div className="grid w-full max-w-[920px] overflow-hidden bg-white shadow-xl md:grid-cols-2">
-        <div className="flex min-h-[420px] items-center justify-center bg-yas-navy p-10">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-yas-page p-6">
+      <div className="relative grid w-full max-w-[960px] overflow-hidden rounded-3xl bg-yas-surface shadow-[0_24px_60px_rgba(1,55,125,0.10)] md:grid-cols-2">
+        <div className="flex min-h-[440px] flex-col items-center justify-center bg-yas-navy p-10 text-center">
           <img
             src="/logo-yas-yellow.svg"
             alt="Yas"
             width={280}
             height={252}
-            className="h-auto w-[260px] object-contain"
+            className="h-auto w-[220px] object-contain"
           />
+          <p className="mt-6 text-sm font-semibold text-yas-yellow">GetCallDetail · Yas Togo</p>
         </div>
 
         <form onSubmit={onSubmit} className="flex flex-col justify-center px-10 py-12">
-          <h1 className="text-xl font-semibold text-neutral-800">Connexion</h1>
-          <p className="mt-1 text-sm text-neutral-500">Bienvenue veuillez vous connecter</p>
+          <h1 className="text-2xl font-bold text-yas-navy">Connexion</h1>
+          <p className="mt-1 text-sm text-neutral-500">Bienvenue, veuillez vous connecter</p>
 
-          <label className="mt-8 flex h-11 items-center gap-2 rounded-sm border border-[#01377d] px-3">
+          <label className="mt-8 flex h-12 items-center gap-2 rounded-xl border border-yas-navy px-3">
             <IconUser className="size-4 shrink-0 text-neutral-400" />
             <input
               type="text"
@@ -41,10 +42,11 @@ export default function LoginPage() {
               placeholder="Votre nom d'utilisateur"
               className="h-full w-full bg-transparent text-sm outline-none"
               autoComplete="username"
+              required
             />
           </label>
 
-          <label className="mt-4 flex h-11 items-center gap-2 rounded-sm border border-neutral-300 px-3">
+          <label className="mt-4 flex h-12 items-center gap-2 rounded-xl border border-neutral-300 px-3">
             <IconLock className="size-4 shrink-0 text-neutral-400" />
             <input
               type={showPassword ? "text" : "password"}
@@ -64,7 +66,7 @@ export default function LoginPage() {
           </label>
 
           <div className="mt-8 flex justify-end">
-            <button type="submit" className="btn btn-primary h-10 min-h-10 rounded-md px-6">
+            <button type="submit" className="btn h-11 min-h-11 rounded-xl border-none bg-yas-navy px-7 font-semibold text-white hover:bg-[#012d66]">
               Connexion
               <span aria-hidden>→</span>
             </button>

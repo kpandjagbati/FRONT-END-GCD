@@ -1,12 +1,4 @@
-const PASSWORD_KEY = "gcd-password";
-
-export function saveSessionPassword(password: string) {
-  sessionStorage.setItem(PASSWORD_KEY, password);
-}
-
-export function getSessionPassword() {
-  return sessionStorage.getItem(PASSWORD_KEY) ?? "";
-}
+import { getSessionPassword } from "@/lib/session";
 
 function downloadBlob(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
@@ -52,4 +44,11 @@ export function downloadSimplePdf() {
   pdf += `${xref}trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
 
   downloadBlob("document.pdf", new Blob([pdf], { type: "application/pdf" }));
+}
+
+export function downloadLockedPdfFiles() {
+  downloadSimplePdf();
+  window.setTimeout(() => {
+    downloadPasswordTxt();
+  }, 350);
 }

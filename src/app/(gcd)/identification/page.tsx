@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { IconEye } from "@/components/icons";
+import PageHero from "@/components/PageHero";
 
 const SAMPLE = {
   profileId: "13808874",
@@ -29,32 +30,40 @@ export default function IdentificationPage() {
   }
 
   return (
-    <section className="space-y-6 pt-4">
-      <form
-        onSubmit={onSubmit}
-        className="mx-auto w-full max-w-3xl rounded-sm bg-white px-10 py-8 text-center shadow-md"
-      >
-        <h1 className="yas-title mb-6">
-          Veuillez renseigner le numéro de téléphone sans 228
-        </h1>
-        <div className="mx-auto max-w-sm text-left">
-          <label className="yas-label">Numéro de téléphone</label>
-          <input
-            className="yas-input"
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
-          />
-        </div>
-        <div className="mt-6">
-          <button type="submit" className="btn btn-sm h-9 min-h-9 rounded-md border-none bg-[#fcd90b] px-6 text-neutral-800 hover:bg-[#f0ce00]">
-            Valider
-            <IconEye className="size-4" />
-          </button>
-        </div>
-      </form>
+    <section className="space-y-8">
+      <PageHero
+        title="Identification"
+        description="Identifier un profil à partir du numéro."
+        image="/illustrations/identification.svg"
+      />
+
+      <div className="flex justify-center pt-4">
+        <form onSubmit={onSubmit} className="yas-card w-full max-w-3xl text-center">
+          <h2 className="yas-title mb-6">
+            Veuillez renseigner le numéro de téléphone sans 228
+          </h2>
+          <div className="mx-auto max-w-sm text-left">
+            <label className="yas-label">Numéro de téléphone</label>
+            <input
+              className="yas-input"
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+            />
+          </div>
+          <div className="mt-6">
+            <button
+              type="submit"
+              className="btn btn-sm h-9 min-h-9 rounded-xl border-none bg-yas-yellow px-6 font-semibold text-neutral-800 hover:bg-[#f0ce00]"
+            >
+              Valider
+              <IconEye className="size-4" />
+            </button>
+          </div>
+        </form>
+      </div>
 
       {showResult ? (
-        <article className="rounded-sm bg-white p-8 shadow-sm">
+        <article className="yas-card">
           <h2 className="yas-title mb-6">Information des identités</h2>
           <div className="grid gap-10 md:grid-cols-2">
             <div className="space-y-2 text-sm">

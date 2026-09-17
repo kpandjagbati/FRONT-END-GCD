@@ -1,7 +1,7 @@
 "use client";
 
 import { IconEye, IconFile, IconLock } from "@/components/icons";
-import { downloadPasswordTxt, downloadSimplePdf } from "@/lib/downloads";
+import { downloadLockedPdfFiles, downloadSimplePdf } from "@/lib/downloads";
 
 type Variant = "voir" | "pdf-red" | "pdf-navy" | "pdf-gray" | "excel" | "word" | "valider" | "voir-blue";
 
@@ -34,16 +34,24 @@ export function ActionButton({
       type="button"
       disabled={isDisabled}
       onClick={onClick}
-      className={`btn btn-sm h-9 min-h-9 px-5 border-none rounded-md font-medium shadow-none ${styles[variant]}`}
+      className={`btn btn-sm h-9 min-h-9 px-5 border-none rounded-xl font-semibold shadow-sm ${styles[variant]}`}
     >
       {children}
     </button>
   );
 }
 
-export function VoirButton({ label = "Voir", blue = false }: { label?: string; blue?: boolean }) {
+export function VoirButton({
+  label = "Voir",
+  blue = false,
+  onClick,
+}: {
+  label?: string;
+  blue?: boolean;
+  onClick?: () => void;
+}) {
   return (
-    <ActionButton variant={blue ? "voir-blue" : "voir"}>
+    <ActionButton variant={blue ? "voir-blue" : "voir"} onClick={onClick}>
       {label}
       <IconEye className="size-4" />
     </ActionButton>
@@ -52,7 +60,7 @@ export function VoirButton({ label = "Voir", blue = false }: { label?: string; b
 
 export function PdfRedButton() {
   return (
-    <ActionButton variant="pdf-red" onClick={downloadPasswordTxt}>
+    <ActionButton variant="pdf-red" onClick={downloadLockedPdfFiles}>
       PDF
       <IconLock className="size-4" />
     </ActionButton>
@@ -61,7 +69,7 @@ export function PdfRedButton() {
 
 export function PdfNavyButton() {
   return (
-    <ActionButton variant="pdf-navy">
+    <ActionButton variant="pdf-navy" onClick={downloadSimplePdf}>
       PDF
       <IconFile className="size-4" />
     </ActionButton>
