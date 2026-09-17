@@ -1,26 +1,125 @@
 @import "tailwindcss";
+@plugin "daisyui" {
+  themes: light --default;
+}
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@plugin "daisyui/theme" {
+  name: "light";
+  default: true;
+  color-scheme: light;
+  --color-base-100: #ffffff;
+  --color-base-200: #f4f5f7;
+  --color-base-300: #e5e7eb;
+  --color-base-content: #1f2937;
+  --color-primary: #01377d;
+  --color-primary-content: #ffffff;
+  --color-secondary: #ffa602;
+  --color-secondary-content: #1f2937;
+  --color-accent: #fcd90b;
+  --color-accent-content: #1f2937;
+  --color-neutral: #2b5566;
+  --color-neutral-content: #ffffff;
+  --color-success: #22a45a;
+  --color-success-content: #ffffff;
+  --color-error: #ef6b6b;
+  --color-error-content: #ffffff;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.5rem;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-yas-navy: #01377d;
+  --color-yas-yellow: #fcd90b;
+  --color-yas-orange: #ffa602;
+  --color-yas-active: #2b5566;
+  --color-yas-login: #cfd2e1;
+  --color-yas-blue: #3b6ea8;
+  --font-sans: var(--font-montserrat);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
+  color-scheme: light;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-montserrat), Arial, Helvetica, sans-serif;
+  background: #f4f5f7;
+  color: #1f2937;
+}
+
+.yas-input {
+  @apply h-11 w-full rounded-lg border border-neutral-300 bg-white px-3 text-sm text-neutral-800 shadow-none outline-none;
+}
+
+.yas-input:focus {
+  border-color: #9db4cc;
+}
+
+.yas-input::placeholder {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.yas-label {
+  @apply mb-1 block text-xs font-semibold text-gray-600;
+}
+
+.yas-radio,
+.yas-check {
+  appearance: none;
+  margin: 0;
+  flex-shrink: 0;
+  cursor: pointer;
+  background-color: #fff;
+}
+
+.yas-radio {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  border: 2px solid #7d9bb8;
+}
+
+.yas-check {
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 0.2rem;
+  border: 2px solid #7d9bb8;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 12px;
+}
+
+.yas-radio:hover,
+.yas-check:hover {
+  border-color: #3b6ea8;
+}
+
+.yas-radio:checked {
+  border: 3px solid #fff;
+  background-color: #01377d;
+  box-shadow: 0 0 0 2px #7d9bb8;
+}
+
+.yas-check:checked {
+  border-color: #01377d;
+  background-color: #01377d;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' d='M3.2 8.4 6.5 11.6 12.8 4.4'/%3E%3C/svg%3E");
+}
+
+.yas-radio:focus-visible,
+.yas-check:focus-visible {
+  outline: 2px solid #3b6ea8;
+  outline-offset: 2px;
+}
+
+.yas-title {
+  @apply text-lg font-semibold text-neutral-800;
+}
+
+.yas-link {
+  @apply font-semibold text-yas-blue;
 }
