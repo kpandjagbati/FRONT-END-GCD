@@ -2,17 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ProfileMenu from "@/components/ProfileMenu";
+import { FileDownloadNotice, FileDownloadProvider } from "@/components/FileDownload";
 import { BREADCRUMBS, NAV_ITEMS } from "@/lib/nav";
 import {
   IconChevronsLeft,
   IconChevronsRight,
+  IconClose,
   IconDollar,
   IconFile,
   IconHome,
   IconLogin,
   IconLogout,
+  IconMenu,
   IconPhone,
   IconScan,
   IconUser,
@@ -29,17 +32,49 @@ const ICONS = {
   login: IconLogin,
 };
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+export default function AppShell({ children }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const crumb = BREADCRUMBS[pathname];
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMobileOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setMobileOpen(false);
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileOpen]);
+
   return (
-    <div className="flex h-screen overflow-hidden bg-yas-page">
+    <FileDownloadProvider>
+    <div className="flex h-dvh overflow-hidden bg-yas-page">
+      {mobileOpen ? (
+        <button
+          type="button"
+          aria-label="Fermer le menu"
+          className="fixed inset-0 z-40 bg-[#01377d]/40 backdrop-blur-[2px] lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      ) : null}
+
       <aside
-        className={`relative flex h-full shrink-0 flex-col bg-yas-yellow text-yas-navy transition-[width] duration-200 ${
-          collapsed ? "w-[84px]" : "w-[248px]"
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 flex h-full w-[min(248px,86vw)] shrink-0 flex-col bg-yas-yellow text-yas-navy shadow-[12px_0_32px_rgba(1,55,125,0.16)] transition-transform duration-200 dark:!bg-[#01275a] dark:text-yas-yellow lg:relative lg:z-auto lg:shadow-none ${
+          collapsed ? "lg:w-[84px]" : "lg:w-[248px]"
+        } ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
       >
         <div className="flex h-16 items-center justify-between px-3">
           <Link href="/accueil" className="flex min-w-0 items-center gap-2.5">
@@ -50,24 +85,32 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               height={36}
               className="h-9 w-auto object-contain"
             />
-            {!collapsed ? (
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-bold leading-none">GetCallDetail</span>
-                <span className="mt-1 block truncate text-[11px] font-medium text-yas-navy/70">Yas Togo</span>
+            <span className={`min-w-0 ${collapsed ? "lg:hidden" : ""}`}>
+              <span className="block truncate text-sm font-bold leading-none">GetCallDetail</span>
+              <span className="mt-1 block truncate text-[11px] font-medium text-yas-navy/70 dark:text-yas-yellow/70">
+                Yas Togo
               </span>
-            ) : null}
+            </span>
           </Link>
+          <button
+            type="button"
+            aria-label="Fermer le menu"
+            onClick={() => setMobileOpen(false)}
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border-0 bg-white text-yas-navy shadow-[0_4px_12px_rgba(1,55,125,0.16)] outline-none transition hover:bg-yas-navy hover:text-white focus-visible:bg-yas-navy focus-visible:text-white dark:hover:!bg-[#fcd90b] dark:hover:!text-yas-navy lg:hidden"
+          >
+            <IconClose className="size-4" />
+          </button>
           <button
             type="button"
             aria-label={collapsed ? "Ouvrir le menu" : "Réduire le menu"}
             onClick={() => setCollapsed((value) => !value)}
-            className="btn btn-ghost btn-xs text-yas-navy hover:bg-black/5"
+            className="hidden size-8 shrink-0 items-center justify-center rounded-full border-0 bg-white text-yas-navy shadow-[0_4px_12px_rgba(1,55,125,0.16)] outline-none transition hover:bg-yas-navy hover:text-white focus-visible:bg-yas-navy focus-visible:text-white dark:hover:!bg-[#fcd90b] dark:hover:!text-yas-navy lg:inline-flex"
           >
             {collapsed ? <IconChevronsRight className="size-4" /> : <IconChevronsLeft className="size-4" />}
           </button>
         </div>
 
-        <nav className="mt-3 flex flex-1 flex-col gap-1.5 px-2.5">
+        <nav className="mt-3 flex flex-1 flex-col gap-1.5 overflow-y-auto px-2.5 pb-4">
           {NAV_ITEMS.map((item) => {
             const Icon = ICONS[item.icon];
             const active = pathname === item.href;
@@ -81,21 +124,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all ${
                   isMixx ? "mixx-nav" : ""
                 } ${
-                  active
-                    ? "bg-white text-yas-navy"
-                    : "text-yas-navy/85 hover:bg-black/5"
-                } ${collapsed ? "justify-center px-0" : ""}`}
+                  active ? "bg-white text-yas-navy dark:text-yas-navy" : "text-yas-navy/85 hover:bg-black/5 dark:text-yas-yellow/85 dark:hover:bg-white/10"
+                } ${collapsed ? "lg:justify-center lg:px-0" : ""}`}
               >
                 {isMixx ? (
                   <img
                     src="/logo-mixx.svg"
                     alt="Mixx by Yas"
-                    className={`mixx-nav-logo h-6 w-auto object-contain object-left ${collapsed ? "max-w-[48px]" : "max-w-[150px]"}`}
+                    className={`mixx-nav-logo h-6 w-auto object-contain object-left ${
+                      collapsed ? "max-w-[150px] lg:max-w-[48px]" : "max-w-[150px]"
+                    }`}
                   />
                 ) : (
                   <Icon className="size-[18px] shrink-0" />
                 )}
-                {!collapsed && !isMixx ? <span className="truncate">{item.label}</span> : null}
+                {!isMixx ? (
+                  <span className={`truncate ${collapsed ? "lg:hidden" : ""}`}>{item.label}</span>
+                ) : null}
               </Link>
             );
           })}
@@ -103,45 +148,55 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             type="button"
             title="Se déconnecter"
             onClick={logoutSession}
-            className={`mt-3 flex items-center gap-3 rounded-xl bg-yas-navy px-3 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#012d66] ${
-              collapsed ? "justify-center px-0" : ""
+            className={`mt-3 flex items-center gap-3 rounded-xl bg-yas-navy px-3 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#012d66] dark:!bg-[#fcd90b] dark:!text-yas-navy dark:hover:!bg-[#f0ce00] ${
+              collapsed ? "lg:justify-center lg:px-0" : ""
             }`}
           >
             <IconLogout className="size-[18px] shrink-0" />
-            {!collapsed ? <span className="truncate">Se déconnecter</span> : null}
+            <span className={`truncate ${collapsed ? "lg:hidden" : ""}`}>Se déconnecter</span>
           </button>
         </nav>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="yas-topbar relative z-30 flex h-16 shrink-0 items-center justify-between border-b border-black/5 bg-yas-surface px-6 shadow-[0_8px_24px_rgba(1,55,125,0.04)]">
-          <div className="flex min-w-0 items-center gap-3 text-sm">
-            <Link href="/accueil" className="font-semibold text-yas-navy hover:text-yas-blue">
+        <header className="yas-topbar relative z-30 flex h-16 shrink-0 items-center justify-between gap-2 border-b border-black/5 bg-yas-surface px-3 shadow-[0_8px_24px_rgba(1,55,125,0.04)] sm:px-6">
+          <div className="flex min-w-0 items-center gap-2 text-sm sm:gap-3">
+            <button
+              type="button"
+              aria-label="Ouvrir le menu"
+              onClick={() => setMobileOpen(true)}
+              className="btn btn-ghost btn-sm shrink-0 text-yas-navy lg:hidden"
+            >
+              <IconMenu className="size-5" />
+            </button>
+            <Link href="/accueil" className="hidden font-semibold text-yas-navy hover:text-yas-blue sm:inline">
               Yas
             </Link>
-            <span className="h-4 w-px bg-neutral-200" />
-            <Link href="/accueil" aria-label="Accueil" className="text-neutral-400 hover:text-yas-navy">
+            <span className="hidden h-4 w-px bg-neutral-200 sm:block" />
+            <Link href="/accueil" aria-label="Accueil" className="hidden text-neutral-400 hover:text-yas-navy sm:inline">
               <IconHome className="size-4" />
             </Link>
-            <Link href="/accueil" className="yas-link hover:underline">
+            <Link href="/accueil" className="yas-link hidden hover:underline md:inline">
               GetCallDetail
             </Link>
             {crumb ? (
               <>
-                <span className="text-neutral-300">/</span>
+                <span className="hidden text-neutral-300 md:inline">/</span>
                 <Link href={crumb.href} className="truncate font-semibold text-neutral-700 hover:text-yas-navy">
                   {crumb.label}
                 </Link>
               </>
             ) : null}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3">
             <ProfileMenu />
           </div>
         </header>
 
-        <main className="yas-content min-h-0 flex-1 overflow-auto p-6">{children}</main>
+        <main className="yas-content flex min-h-0 flex-1 flex-col overflow-auto p-4 sm:p-6">{children}</main>
       </div>
     </div>
+    <FileDownloadNotice />
+    </FileDownloadProvider>
   );
 }

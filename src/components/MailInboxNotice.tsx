@@ -22,19 +22,8 @@ export default function MailInboxNotice({ email, onClose }: MailInboxNoticeProps
   if (!isClient) return null;
 
   return createPortal(
-    <aside
-      className="yas-mail-toast"
-      role="status"
-      aria-live="polite"
-      style={{
-        position: "fixed",
-        top: "5.5rem",
-        right: "1.25rem",
-        zIndex: 9999,
-        width: "min(22.5rem, calc(100vw - 2rem))",
-      }}
-    >
-      <div className="relative rounded-2xl border border-yas-yellow bg-[#fff8d6] p-4 text-sm text-yas-navy shadow-[0_18px_40px_rgba(1,55,125,0.22)]">
+    <aside className="yas-mail-toast" role="status" aria-live="polite">
+      <div className="relative rounded-2xl border border-yas-yellow bg-[#fff8d6] p-4 text-sm text-yas-navy shadow-[0_18px_40px_rgba(1,55,125,0.22)] dark:text-[#e8eef7]">
         <button
           type="button"
           aria-label="Fermer"

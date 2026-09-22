@@ -1,112 +1,237 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
+import { IconArrowRight } from "@/components/icons";
 import { useSessionDisplayName } from "@/lib/use-client";
 
-const MODULES = [
+gsap.registerPlugin(useGSAP);
+
+const SLIDES = [
+  { src: "/illustrations/welcome.svg", label: "GetCallDetail" },
+  { src: "/illustrations/appels-hero.svg", label: "Appels Détaillés" },
+  { src: "/illustrations/identites.svg", label: "Identités" },
+  { src: "/illustrations/identification.svg", label: "Identification" },
+  { src: "/illustrations/traitements.svg", label: "Traitements" },
+  { src: "/illustrations/ftth-hero.svg", label: "FTTH Login" },
+];
+
+type HomeModule = {
+  href: string;
+  title: string;
+  desc: string;
+  image: string;
+  imageDark?: string;
+};
+
+const MODULES: HomeModule[] = [
+  {
+    href: "/tmoney",
+    title: "Mixx by Yas",
+    desc: "Transactions par numéro et période.",
+    image: "/logo-mixx.svg",
+    imageDark: "/logo-mixx-on-blue.svg",
+  },
   {
     href: "/appels",
     title: "Appels Détaillés",
-    desc: "Rechercher un numéro, IMEI, IMSI ou appelé.",
+    desc: "Numéro, IMEI, IMSI ou appelé.",
     image: "/illustrations/appels.svg",
   },
   {
     href: "/identite",
     title: "Identités",
-    desc: "Retrouver un client par nom et prénoms.",
+    desc: "Client par nom et prénoms.",
     image: "/illustrations/identites.svg",
   },
   {
     href: "/identification",
     title: "Identification",
-    desc: "Identifier un profil à partir du numéro.",
+    desc: "Profil à partir du numéro.",
     image: "/illustrations/identification.svg",
   },
   {
     href: "/traitement",
     title: "Traitements",
-    desc: "Lancer un traitement CSV en masse.",
+    desc: "Traitement CSV en masse.",
     image: "/illustrations/traitements.svg",
   },
   {
     href: "/ftth-login",
     title: "FTTH Login",
-    desc: "Récupérer le login d'une ligne fibre.",
+    desc: "Login d'une ligne fibre.",
     image: "/illustrations/ftth.svg",
   },
 ];
 
-const cardClass =
-  "flex items-center gap-4 rounded-2xl bg-white p-5 shadow-[0_12px_32px_rgba(1,55,125,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(1,55,125,0.12)]";
+const LEFT_MODULES = MODULES.slice(0, 3);
+const RIGHT_MODULES = MODULES.slice(3);
 
-function Illustration({ src }: { src: string }) {
+function ModuleCard({
+  item,
+  wide = false,
+}: Readonly<{
+  item: (typeof MODULES)[number];
+  wide?: boolean;
+}>) {
   return (
-    <span className="yas-illustration-well flex h-[76px] w-[96px] shrink-0 items-center justify-center rounded-2xl bg-[#eef4ff]">
-      <img src={src} alt="" className="yas-illustration h-14 w-[84px] object-contain" />
-    </span>
+    <Link
+      href={item.href}
+      className={`dash-card group flex h-full overflow-hidden rounded-2xl bg-white shadow-[0_12px_32px_rgba(1,55,125,0.06)] ${
+        wide ? "min-h-[7.75rem] flex-row items-center gap-4 px-5 py-4" : "flex-col p-3.5"
+      }`}
+    >
+      <span
+        className={`flex shrink-0 items-center justify-center overflow-hidden ${
+          wide ? "size-[5.5rem]" : "h-[4.75rem] w-full"
+        }`}
+      >
+        <img
+          src={item.image}
+          alt=""
+          className={`w-auto max- w-full object-contain ${wide ? "h-16" : "h-14"} ${
+            item.imageDark ? "dark:hidden" : ""
+          }`}
+        />
+        {item.imageDark ? (
+          <img
+            src={item.imageDark}
+            alt=""
+            className={`hidden w-auto max-w-full object-contain dark:block ${wide ? "h-16" : "h-14"}`}
+          />
+        ) : null}
+      </span>
+      <span className={`min-w-0 ${wide ? "flex-1" : "pt-1"}`}>
+        <h3 className={`font-bold text-yas-navy ${wide ? "text-lg" : ""}`}>{item.title}</h3>
+        <p className="mt-0.5 text-sm leading-snug text-neutral-500">{item.desc}</p>
+        <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-yas-navy">
+          Ouvrir
+          <IconArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-1" />
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+function ModuleColumn({ items }: { items: Array<(typeof MODULES)[number]> }) {
+  const [first, second, third] = items;
+
+  return (
+    <div className="grid w-full max-w-md grid-cols-2 gap-3.5">
+      <ModuleCard key={first.href} item={first} />
+      <ModuleCard key={second.href} item={second} />
+      <div className="col-span-2">
+        <ModuleCard key={third.href} item={third} wide />
+      </div>
+    </div>
   );
 }
 
 export default function AccueilPage() {
   const displayName = useSessionDisplayName();
+  const root = useRef<HTMLElement>(null);
+  const [slide, setSlide] = useState(0);
+
+  useEffect(() => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) return;
+    const timer = window.setInterval(() => {
+      setSlide((current) => (current + 1) % SLIDES.length);
+    }, 3400);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useGSAP(
+    () => {
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const slides = gsap.utils.toArray<HTMLElement>(".dash-slide");
+
+      slides.forEach((node, index) => {
+        gsap.to(node, {
+          autoAlpha: index === slide ? 1 : 0,
+          y: index === slide ? 0 : 16,
+          duration: reduce ? 0 : 0.55,
+          ease: "power2.out",
+        });
+      });
+    },
+    { scope: root, dependencies: [slide] },
+  );
+
+  useGSAP(
+    () => {
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (reduce) return;
+
+      gsap.from(".dash-intro", { y: 16, opacity: 0, duration: 0.5, ease: "power3.out" });
+      gsap.from(".dash-bar", {
+        scaleX: 0,
+        duration: 0.45,
+        delay: 0.15,
+        transformOrigin: "center",
+        ease: "power3.out",
+      });
+      gsap.from(".dash-card", {
+        y: 24,
+        opacity: 0,
+        stagger: 0.06,
+        duration: 0.45,
+        delay: 0.12,
+        ease: "power3.out",
+      });
+
+      const cards = gsap.utils.toArray<HTMLElement>(".dash-card");
+      const cleanups = cards.map((card) => {
+        const enter = () => gsap.to(card, { y: -5, duration: 0.28, ease: "power2.out" });
+        const leave = () => gsap.to(card, { y: 0, duration: 0.35, ease: "power3.out" });
+        card.addEventListener("mouseenter", enter);
+        card.addEventListener("mouseleave", leave);
+        return () => {
+          card.removeEventListener("mouseenter", enter);
+          card.removeEventListener("mouseleave", leave);
+        };
+      });
+
+      return () => cleanups.forEach((fn) => fn());
+    },
+    { scope: root },
+  );
 
   return (
-    <section className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-yas-navy md:text-3xl">
-          {displayName
-            ? `Bonjour ${displayName}, bienvenue sur le dashboard`
-            : "Bienvenue sur le dashboard"}
-        </h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          Consultez les appels, identités, identifications et transactions Mixx by Yas.
-        </p>
-      </div>
-
-      <div className="grid items-center gap-6 rounded-3xl bg-white px-8 py-6 shadow-[0_12px_32px_rgba(1,55,125,0.06)] md:grid-cols-[1fr_1fr]">
-        <div>
-          <p className="max-w-md text-sm font-medium leading-relaxed text-neutral-600">
-            Tous les outils GetCallDetail au même endroit : appels, identités, Mixx by Yas,
-            traitements CSV et login fibre.
+    <section ref={root} className="my-auto w-full py-6">
+      <div className="mx-auto flex w-full max-w-7xl flex-col items-center gap-6 lg:flex-row lg:items-center lg:justify-center lg:gap-6">
+        <div className="dash-intro order-1 w-full max-w-sm shrink-0 text-center lg:order-2">
+          <h1 className="text-xl font-bold text-yas-navy sm:text-2xl">
+            {displayName ? `Bonjour ${displayName}` : "Bienvenue"}
+          </h1>
+          <p className="mx-auto mt-2 max-w-xs text-sm font-medium leading-relaxed text-neutral-600">
+            Choisissez un module pour lancer une recherche, un traitement CSV ou un login fibre.
           </p>
-          <div className="mt-4 h-1.5 w-24 rounded-full bg-yas-yellow" />
-        </div>
-        <div className="hidden justify-end md:flex">
-          <span className="yas-illustration-well flex h-44 w-full max-w-md items-center justify-center rounded-2xl bg-[#eef4ff] px-4">
-            <img
-              src="/illustrations/welcome.svg"
-              alt=""
-              className="yas-illustration h-40 w-auto max-w-full object-contain"
-            />
-          </span>
-        </div>
-      </div>
+          <div className="dash-bar mx-auto mt-4 h-1.5 w-24 origin-center rounded-full bg-yas-yellow" />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <Link href="/tmoney" className={`mixx-card border-l-[5px] border-yas-mixx ${cardClass}`}>
-          <span className="yas-illustration-well flex h-[76px] w-[96px] shrink-0 items-center justify-center rounded-2xl bg-[#eef4ff]">
-            <img
-              src="/logo-mixx.svg"
-              alt=""
-              className="mixx-card-logo h-8 w-auto object-contain"
-            />
-          </span>
-          <div>
-            <h3 className="font-bold text-yas-navy">Mixx by Yas</h3>
-            <p className="mt-1 text-sm text-neutral-500">
-              Rechercher une transaction par numéro et période.
-            </p>
+          <div className="relative mt-5 h-48 w-full sm:h-60">
+            {SLIDES.map((item, index) => (
+              <div
+                key={item.src}
+                className="dash-slide absolute inset-0 flex flex-col items-center justify-center"
+                style={{ visibility: index === 0 ? "visible" : "hidden" }}
+              >
+                <img src={item.src} alt="" className="h-full max-h-52 w-full object-contain" />
+              </div>
+            ))}
           </div>
-        </Link>
-        {MODULES.map((item) => (
-          <Link key={item.href} href={item.href} className={cardClass}>
-            <Illustration src={item.image} />
-            <div>
-              <h3 className="font-bold text-yas-navy">{item.title}</h3>
-              <p className="mt-1 text-sm text-neutral-500">{item.desc}</p>
-            </div>
-          </Link>
-        ))}
+          <p className="mt-2 text-center text-xs font-semibold text-yas-navy">{SLIDES[slide].label}</p>
+        </div>
+
+        <div className="order-2 w-full max-w-md lg:order-1">
+          <ModuleColumn items={LEFT_MODULES} />
+        </div>
+
+        <div className="order-3 w-full max-w-md">
+          <ModuleColumn items={RIGHT_MODULES} />
+        </div>
       </div>
     </section>
   );

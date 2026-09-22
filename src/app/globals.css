@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @plugin "daisyui" {
-  themes: light --default;
+  themes: light --default, dark;
 }
 
 @plugin "daisyui/theme" {
@@ -19,6 +19,30 @@
   --color-accent-content: #1f2937;
   --color-neutral: #2b5566;
   --color-neutral-content: #ffffff;
+  --color-success: #22a45a;
+  --color-success-content: #ffffff;
+  --color-error: #ef6b6b;
+  --color-error-content: #ffffff;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.5rem;
+}
+
+@plugin "daisyui/theme" {
+  name: "dark";
+  color-scheme: dark;
+  --color-base-100: #01275a;
+  --color-base-200: #01204d;
+  --color-base-300: #01377d;
+  --color-base-content: #e8eef7;
+  --color-primary: #01377d;
+  --color-primary-content: #ffffff;
+  --color-secondary: #ffa602;
+  --color-secondary-content: #1f2937;
+  --color-accent: #01377d;
+  --color-accent-content: #fcd90b;
+  --color-neutral: #7eb0e0;
+  --color-neutral-content: #01377d;
   --color-success: #22a45a;
   --color-success-content: #ffffff;
   --color-error: #ef6b6b;
@@ -47,14 +71,28 @@
 html,
 body {
   height: 100%;
+  overflow-x: hidden;
   color-scheme: light;
 }
 
 html.dark {
   color-scheme: dark;
-  --color-yas-page: #0b1220;
-  --color-yas-surface: #1a2438;
+  --color-yas-page: #01377d;
+  --color-yas-surface: #01275a;
   --color-yas-mixx: #7eb0e0;
+}
+
+html.dark .bg-yas-yellow,
+html.dark .bg-\[\#fcd90b\] {
+  background-color: #01377d;
+}
+
+html.dark .hover\:bg-\[\#f0ce00\]:hover {
+  background-color: #012d66;
+}
+
+html.dark .border-yas-yellow {
+  border-color: #01377d;
 }
 
 body {
@@ -68,21 +106,48 @@ html.dark body {
 }
 
 html.dark .bg-yas-page {
-  background-color: #0b1220;
+  background-color: #01377d;
 }
 
 html.dark .bg-yas-surface {
-  background-color: #1a2438;
+  background-color: #01275a;
+}
+
+.yas-card,
+.yas-bubbles {
+  @apply relative overflow-hidden;
+}
+
+.yas-card::before,
+.yas-bubbles::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle 9.5rem at calc(100% + 1.25rem) -1.25rem, rgb(1 55 125 / 0.1), transparent 68%),
+    radial-gradient(circle 11rem at -1.5rem calc(100% + 2rem), rgb(1 55 125 / 0.08), transparent 68%);
+}
+
+.yas-card > *,
+.yas-bubbles > * {
+  position: relative;
+  z-index: 1;
 }
 
 .yas-card {
-  @apply rounded-2xl bg-yas-surface p-8 shadow-[0_18px_50px_rgba(1,55,125,0.08)];
+  @apply rounded-2xl bg-yas-surface p-5 shadow-[0_18px_50px_rgba(1,55,125,0.08)] sm:p-8;
+}
+
+.yas-banner {
+  @apply flex items-start justify-between gap-4 rounded-3xl bg-white px-5 py-5 shadow-[0_12px_32px_rgba(1,55,125,0.06)] sm:gap-6 sm:px-8 sm:py-6;
 }
 
 html.dark .yas-card {
-  background-color: #1a2438;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background-color: #01275a;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .yas-hero {
@@ -90,12 +155,49 @@ html.dark .yas-card {
 }
 
 .yas-input {
-  @apply h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-800 shadow-none outline-none transition-colors;
+  @apply h-11 w-full appearance-none rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-800 shadow-none outline-none transition-colors;
+}
+
+.yas-input::-webkit-calendar-picker-indicator,
+.yas-input::-webkit-inner-spin-button,
+.yas-input::-webkit-outer-spin-button,
+.yas-input::-webkit-search-decoration,
+.yas-input::-webkit-search-cancel-button,
+.yas-input::-webkit-search-results-button,
+.yas-input::-webkit-search-results-decoration,
+.yas-input::-webkit-contacts-auto-fill-button,
+.yas-input::-webkit-credentials-auto-fill-button,
+.yas-input::-webkit-strong-password-auto-fill-button,
+.yas-input::-webkit-caps-lock-indicator,
+.yas-input::-ms-reveal,
+.yas-input::-ms-clear,
+.yas-input::picker-icon {
+  appearance: none;
+  display: none !important;
+  visibility: hidden;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  opacity: 0;
+}
+
+.yas-date-picker::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0;
 }
 
 html.dark .yas-input {
   border-color: rgba(255, 255, 255, 0.12);
-  background: #101828;
+  background-color: #01204d;
   color: #e8eef7;
 }
 
@@ -124,7 +226,7 @@ html.dark .yas-label {
 
 html.dark .yas-radio,
 html.dark .yas-check {
-  background-color: #101828;
+  background-color: #01204d;
   border-color: #7d9bb8;
 }
 
@@ -137,7 +239,7 @@ html.dark .yas-link {
 }
 
 html.dark .yas-illustration-well {
-  background: #24344f;
+  background: #01204d;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
@@ -170,19 +272,95 @@ html.dark .yas-topbar .text-neutral-500 {
 
 html.dark .yas-content .text-neutral-700,
 html.dark .yas-content .text-neutral-800,
-html.dark .yas-topbar .text-neutral-700 {
+html.dark .yas-topbar .text-neutral-700,
+html.dark .yas-topbar .text-neutral-800 {
   color: #e8eef7;
 }
 
-html.dark .yas-content .bg-white,
+html.dark .yas-content .bg-white {
+  background-color: #01275a;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
 html.dark .yas-topbar {
-  background-color: #1a2438;
+  background-color: #01377d;
   border-color: rgba(255, 255, 255, 0.08);
 }
 
 html.dark .yas-content a.bg-white,
 html.dark .yas-content .bg-white {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+html.dark .bg-\[\#eef4ff\],
+html.dark .bg-\[\#f4f7fb\],
+html.dark .bg-\[\#f7f9fc\],
+html.dark .bg-\[\#f8fafc\],
+html.dark .bg-\[\#fff6ea\],
+html.dark .bg-\[\#fff8d6\] {
+  background-color: #01204d;
+}
+
+html.dark .login-card {
+  background-color: #01275a;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+html.dark .login-card .bg-white {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+html.dark .login-field-box {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+html.dark .login-field-box input,
+html.dark .login-card input {
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+  caret-color: #ffffff;
+}
+
+html.dark .login-field-box input::placeholder,
+html.dark .login-card input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.45);
+}
+
+html.dark .login-field-box input:-webkit-autofill,
+html.dark .login-field-box input:-webkit-autofill:hover,
+html.dark .login-field-box input:-webkit-autofill:focus,
+html.dark .login-card input:-webkit-autofill,
+html.dark .login-card input:-webkit-autofill:hover,
+html.dark .login-card input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #ffffff;
+  caret-color: #ffffff;
+  box-shadow: 0 0 0 1000px #1a3d6b inset;
+  transition: background-color 99999s ease-out;
+}
+
+html.dark .login-card h2,
+html.dark .login-card .text-yas-navy {
+  color: #f4f7fb;
+}
+
+html.dark .login-card .text-neutral-500,
+html.dark .login-card .text-neutral-400 {
+  color: #9aa8bc;
+}
+
+html.dark .yas-mail-toast .bg-white,
+html.dark .yas-mail-toast [class*="bg-[#fff8d6]"] {
+  background-color: #01275a;
+  color: #e8eef7;
+}
+
+html.dark .yas-spinner {
+  border-color: #fcd90b;
+  border-top-color: #01377d;
+  border-right-color: #ffa602;
 }
 
 .yas-radio,
@@ -320,6 +498,39 @@ html.dark .yas-content .bg-white {
   }
 }
 
+html.dark .yas-modal-panel {
+  background-color: #01275a;
+  color: #e8eef7;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
+}
+
+html.dark .yas-modal-panel .text-yas-navy,
+html.dark .yas-modal-panel h2 {
+  color: #f4f7fb;
+}
+
+html.dark .yas-modal-panel .bg-white,
+html.dark .yas-modal-panel .bg-neutral-50 {
+  background-color: #01204d;
+  color: #e8eef7;
+}
+
+html.dark .yas-modal-panel .text-neutral-500,
+html.dark .yas-modal-panel .text-neutral-600 {
+  color: #9aa8bc;
+}
+
+html.dark .yas-modal-panel .text-neutral-700,
+html.dark .yas-modal-panel .text-neutral-800,
+html.dark .yas-modal-panel .text-neutral-900 {
+  color: #e8eef7;
+}
+
+html.dark .yas-modal-panel .border-neutral-100,
+html.dark .yas-modal-panel .border-neutral-200 {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
 .yas-modal-backdrop {
   animation: yas-modal-fade 0.25s ease;
 }
@@ -364,7 +575,23 @@ html.dark .yas-content .bg-white {
 }
 
 .yas-mail-toast {
+  position: fixed;
+  top: 4.75rem;
+  right: 0.75rem;
+  left: 0.75rem;
+  z-index: 90;
+  width: auto;
+  max-width: 22.5rem;
+  margin-left: auto;
   animation: yas-toast-in 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (min-width: 640px) {
+  .yas-mail-toast {
+    left: auto;
+    right: 1.25rem;
+    width: min(22.5rem, calc(100vw - 2rem));
+  }
 }
 
 @keyframes yas-toast-in {
@@ -400,6 +627,15 @@ html.dark .yas-content .bg-white {
   animation: yas-spin 0.8s linear infinite;
 }
 
+.yas-spinner-sm {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 9999px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: yas-spin 0.8s linear infinite;
+}
+
 @keyframes yas-spin {
   to {
     transform: rotate(360deg);
@@ -416,7 +652,8 @@ html.dark .yas-content .bg-white {
   .yas-modal-panel,
   .yas-mail-field,
   .yas-mail-toast,
-  .yas-spinner {
+  .yas-spinner,
+  .yas-spinner-sm {
     animation: none;
   }
 }

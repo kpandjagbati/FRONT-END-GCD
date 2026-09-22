@@ -1,7 +1,8 @@
 "use client";
 
 import { IconEye, IconFile, IconLock } from "@/components/icons";
-import { downloadLockedPdfFiles, downloadSimplePdf } from "@/lib/downloads";
+import { useFileDownload } from "@/components/FileDownload";
+import type { ExportKind, ExportSource } from "@/lib/downloads";
 
 type Variant = "voir" | "pdf-red" | "pdf-navy" | "pdf-gray" | "excel" | "word" | "valider" | "voir-blue";
 
@@ -21,12 +22,12 @@ export function ActionButton({
   children,
   disabled,
   onClick,
-}: {
+}: Readonly<{
   variant: Variant;
   children: React.ReactNode;
   disabled?: boolean;
   onClick?: () => void;
-}) {
+}>) {
   const isDisabled = disabled;
 
   return (
@@ -34,7 +35,7 @@ export function ActionButton({
       type="button"
       disabled={isDisabled}
       onClick={onClick}
-      className={`btn btn-sm h-9 min-h-9 px-5 border-none rounded-xl font-semibold shadow-sm ${styles[variant]}`}
+      className={`btn btn-sm h-9 min-h-9 px-4 sm:px-5 border-none rounded-xl font-semibold shadow-sm ${styles[variant]}`}
     >
       {children}
     </button>
@@ -45,11 +46,11 @@ export function VoirButton({
   label = "Voir",
   blue = false,
   onClick,
-}: {
+}: Readonly<{
   label?: string;
   blue?: boolean;
   onClick?: () => void;
-}) {
+}>) {
   return (
     <ActionButton variant={blue ? "voir-blue" : "voir"} onClick={onClick}>
       {label}
@@ -58,46 +59,68 @@ export function VoirButton({
   );
 }
 
-export function PdfRedButton() {
+function ExportButton({
+  kind,
+  variant,
+  children,
+  file,
+}: Readonly<{
+  kind: ExportKind;
+  variant: Variant;
+  children: React.ReactNode;
+  file?: ExportSource;
+}>) {
+  const { start, busy, state } = useFileDownload();
+  const active = busy && state?.kind === kind;
+
   return (
-    <ActionButton variant="pdf-red" onClick={downloadLockedPdfFiles}>
+    <ActionButton variant={variant} disabled={busy} onClick={() => start(kind, file)}>
+      {children}
+      {active ? <span className="yas-spinner-sm" /> : null}
+    </ActionButton>
+  );
+}
+
+export function PdfRedButton({ file }: { file?: ExportSource } = {}) {
+  return (
+    <ExportButton kind="pdf-locked" variant="pdf-red" file={file}>
       PDF
       <IconLock className="size-4" />
-    </ActionButton>
+    </ExportButton>
   );
 }
 
-export function PdfNavyButton() {
+export function PdfNavyButton({ file }: { file?: ExportSource } = {}) {
   return (
-    <ActionButton variant="pdf-navy" onClick={downloadSimplePdf}>
+    <ExportButton kind="pdf" variant="pdf-navy" file={file}>
       PDF
       <IconFile className="size-4" />
-    </ActionButton>
+    </ExportButton>
   );
 }
 
-export function PdfGrayButton() {
+export function PdfGrayButton({ file }: { file?: ExportSource } = {}) {
   return (
-    <ActionButton variant="pdf-gray" onClick={downloadSimplePdf}>
+    <ExportButton kind="pdf" variant="pdf-gray" file={file}>
       PDF
-    </ActionButton>
+    </ExportButton>
   );
 }
 
 export function ExcelButton() {
   return (
-    <ActionButton variant="excel">
+    <ExportButton kind="excel" variant="excel">
       Excel
       <IconFile className="size-4" />
-    </ActionButton>
+    </ExportButton>
   );
 }
 
 export function WordButton() {
   return (
-    <ActionButton variant="word">
+    <ExportButton kind="word" variant="word">
       Word
       <IconFile className="size-4" />
-    </ActionButton>
+    </ExportButton>
   );
 }

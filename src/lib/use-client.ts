@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { getSessionDisplayName, getSessionUsername } from "@/lib/session";
+import { getSessionDisplayName, getSessionUsername, subscribeSession } from "@/lib/session";
 
 function subscribeNoop() {
   return () => {};
@@ -16,17 +16,9 @@ export function useIsClient() {
 }
 
 export function useSessionDisplayName() {
-  return useSyncExternalStore(
-    subscribeNoop,
-    () => getSessionDisplayName(),
-    () => "",
-  );
+  return useSyncExternalStore(subscribeSession, getSessionDisplayName, () => "");
 }
 
 export function useSessionUsername() {
-  return useSyncExternalStore(
-    subscribeNoop,
-    () => getSessionUsername(),
-    () => "",
-  );
+  return useSyncExternalStore(subscribeSession, getSessionUsername, () => "");
 }

@@ -1,8 +1,9 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { IconEye } from "@/components/icons";
+import { FormEvent, useEffect, useRef, useState, type ReactNode } from "react";
+import { IconEye, IconUser } from "@/components/icons";
 import PageHero from "@/components/PageHero";
+import { formatDateTime } from "@/lib/format-date";
 
 const SAMPLE = {
   profileId: "13808874",
@@ -20,28 +21,63 @@ const SAMPLE = {
   addressId: "50769677",
 };
 
+function displayValue(value?: string) {
+  const trimmed = value?.trim();
+  if (!trimmed || trimmed.toUpperCase() === "N/A") return "—";
+  return trimmed;
+}
+
+function initials(firstName: string, lastName: string) {
+  const first = firstName.trim().charAt(0);
+  const last = lastName.trim().charAt(0);
+  return `${first}${last}`.toUpperCase() || "?";
+}
+
+function InfoRow({ label, value }: Readonly<{ label: string; value: string }>) {
+  return (
+    <div className="flex items-start justify-between gap-4 border-b border-neutral-100 py-2.5 last:border-b-0 last:pb-0">
+      <dt className="shrink-0 text-xs font-medium text-neutral-500">{label}</dt>
+      <dd className="text-right text-sm font-semibold text-yas-navy">{value}</dd>
+    </div>
+  );
+}
+
+function InfoSection({ title, children }: Readonly<{ title: string; children: ReactNode }>) {
+  return (
+    <section className="rounded-2xl border border-neutral-100 bg-[#f7f9fc] p-4 sm:p-5">
+      <h3 className="mb-3 text-sm font-bold text-yas-navy">{title}</h3>
+      <dl>{children}</dl>
+    </section>
+  );
+}
+
 export default function IdentificationPage() {
   const [phone, setPhone] = useState("");
   const [showResult, setShowResult] = useState(false);
+  const resultRef = useRef<HTMLElement>(null);
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setShowResult(true);
   }
 
+  useEffect(() => {
+    if (!showResult) return;
+    resultRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [showResult]);
+
+  const fullName = `${SAMPLE.firstName} ${SAMPLE.lastName}`.replace(/\s+/g, " ").trim();
+  const searchedNumber = phone.trim() ? `228 ${phone.trim()}` : "—";
+
   return (
-    <section className="space-y-8">
+    <section className="my-auto w-full space-y-8 py-6">
       <PageHero
         title="Identification"
         description="Identifier un profil à partir du numéro."
         image="/illustrations/identification.svg"
-      />
-
-      <div className="flex justify-center pt-4">
-        <form onSubmit={onSubmit} className="yas-card w-full max-w-3xl text-center">
-          <h2 className="yas-title mb-6">
-            Veuillez renseigner le numéro de téléphone sans 228
-          </h2>
+      >
+        <form onSubmit={onSubmit} className="yas-card w-full max-w-xl text-center">
+          <h2 className="yas-title mb-6">Veuillez renseigner le numéro de téléphone sans 228</h2>
           <div className="mx-auto max-w-sm text-left">
             <label className="yas-label">Numéro de téléphone</label>
             <input
@@ -60,32 +96,59 @@ export default function IdentificationPage() {
             </button>
           </div>
         </form>
-      </div>
+      </PageHero>
 
       {showResult ? (
-        <article className="yas-card">
-          <h2 className="yas-title mb-6">Information des identités</h2>
-          <div className="grid gap-10 md:grid-cols-2">
-            <div className="space-y-2 text-sm">
-              <h3 className="font-semibold text-neutral-800">Identifiants principaux</h3>
-              <p>ID de profil:{SAMPLE.profileId}</p>
-              <p>Login: {SAMPLE.login}</p>
-              <p>ID de compte:{SAMPLE.accountId}</p>
-              <p>ID de service:{SAMPLE.serviceId}</p>
-              <p>Code de service:{SAMPLE.serviceCode}</p>
+        <article
+          ref={resultRef}
+          className="yas-card mx-auto w-full max-w-5xl overflow-hidden"
+        >
+          <header className="flex flex-col gap-4 border-b border-neutral-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <span className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-[#eef4ff] text-lg font-bold text-yas-navy">
+                {initials(SAMPLE.firstName, SAMPLE.lastName) || <IconUser className="size-7" />}
+              </span>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
+                  Information des identités
+                </p>
+                <h2 className="mt-0.5 text-lg font-bold text-yas-navy sm:text-xl">{fullName}</h2>
+                <p className="mt-1 text-sm font-medium text-neutral-500">{searchedNumber}</p>
+              </div>
             </div>
-            <div className="space-y-2 text-sm">
-              <h3 className="font-semibold text-neutral-800">Informations personnelles</h3>
-              <p>Nom: {SAMPLE.lastName}</p>
-              <p>Prénom: {SAMPLE.firstName}</p>
-              <p>Numéro SMS: {SAMPLE.smsNumber}</p>
-              <p>Id de notification d&apos;email: {SAMPLE.emailId}</p>
-              <p>Date d&apos;activation: {SAMPLE.activationDate}</p>
-              <p className="pt-2 font-semibold underline">Adresse</p>
-              <p>Adresse 1: {SAMPLE.address1}</p>
-              <p>Adresse 2: {SAMPLE.address2}</p>
-              <p>ID d&apos;adresse: {SAMPLE.addressId}</p>
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full bg-yas-navy px-3 py-1 text-xs font-semibold text-white">
+                {SAMPLE.serviceCode}
+              </span>
+              <span className="rounded-full bg-yas-yellow px-3 py-1 text-xs font-semibold text-neutral-800">
+                {SAMPLE.serviceId.replaceAll("_", " ")}
+              </span>
             </div>
+          </header>
+          <div className="mt-4 h-1.5 w-24 rounded-full bg-yas-yellow" />
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-3">
+            <InfoSection title="Identifiants principaux">
+              <InfoRow label="ID de profil" value={displayValue(SAMPLE.profileId)} />
+              <InfoRow label="Login" value={displayValue(SAMPLE.login)} />
+              <InfoRow label="ID de compte" value={displayValue(SAMPLE.accountId)} />
+              <InfoRow label="ID de service" value={displayValue(SAMPLE.serviceId)} />
+              <InfoRow label="Code de service" value={displayValue(SAMPLE.serviceCode)} />
+            </InfoSection>
+
+            <InfoSection title="Informations personnelles">
+              <InfoRow label="Nom" value={displayValue(SAMPLE.lastName)} />
+              <InfoRow label="Prénom" value={displayValue(SAMPLE.firstName)} />
+              <InfoRow label="Numéro SMS" value={displayValue(SAMPLE.smsNumber)} />
+              <InfoRow label="E-mail" value={displayValue(SAMPLE.emailId)} />
+              <InfoRow label="Activation" value={formatDateTime(SAMPLE.activationDate)} />
+            </InfoSection>
+
+            <InfoSection title="Adresse">
+              <InfoRow label="Adresse 1" value={displayValue(SAMPLE.address1)} />
+              <InfoRow label="Adresse 2" value={displayValue(SAMPLE.address2)} />
+              <InfoRow label="ID d'adresse" value={displayValue(SAMPLE.addressId)} />
+            </InfoSection>
           </div>
         </article>
       ) : null}

@@ -1,15 +1,17 @@
 "use client";
 
 import { PdfGrayButton, PdfRedButton, VoirButton } from "@/components/ActionButtons";
+import DateField from "@/components/DateField";
 import PageHero from "@/components/PageHero";
 import YasDataTable, { type YasColumn } from "@/components/YasDataTable";
 import YasLoadingOverlay from "@/components/YasLoadingOverlay";
 import YasModal from "@/components/YasModal";
+import { formatDateTime } from "@/lib/format-date";
 import { searchMixxMock, type MixxRow } from "@/lib/mock-mixx";
 import { useVoirSearch } from "@/lib/use-voir-search";
 
 const COLUMNS: YasColumn<MixxRow>[] = [
-  { key: "date", label: "Date" },
+  { key: "date", label: "Date", render: (row) => formatDateTime(row.date) },
   { key: "heure", label: "Heure" },
   { key: "numero", label: "Numero" },
   { key: "reference", label: "Référence" },
@@ -22,21 +24,18 @@ export default function TmoneyPage() {
   const { loading, results, run, reset } = useVoirSearch(searchMixxMock);
 
   return (
-    <section className="space-y-8">
+    <section className="my-auto w-full py-6">
       <YasLoadingOverlay open={loading} />
       <PageHero
         title="Mixx by Yas"
         description="Rechercher une transaction par numéro et période."
-        image="/logo-mixx.svg"
-        imageClassName="mixx-page-logo h-16 w-auto max-w-full object-contain"
-      />
-
-      <div className="flex justify-center pt-4">
+        image="/illustrations/welcome.svg"
+      >
         <form
-          className="yas-card mixx-page-card w-full max-w-5xl"
+          className="yas-card mixx-page-card w-full max-w-xl"
           onSubmit={(event) => event.preventDefault()}
         >
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-5">
             <div>
               <label className="yas-label">
                 Numero<span className="text-red-500">*</span>
@@ -47,13 +46,13 @@ export default function TmoneyPage() {
               <label className="yas-label">
                 Date debut<span className="text-red-500">*</span>
               </label>
-              <input type="text" placeholder="jj/mm/aaaa" className="yas-input" />
+              <DateField name="dateDebut" />
             </div>
             <div>
               <label className="yas-label">
                 Date fin<span className="text-red-500">*</span>
               </label>
-              <input type="text" placeholder="jj/mm/aaaa" className="yas-input" />
+              <DateField name="dateFin" />
             </div>
           </div>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
@@ -62,7 +61,7 @@ export default function TmoneyPage() {
             <PdfGrayButton />
           </div>
         </form>
-      </div>
+      </PageHero>
 
       <YasModal open={Boolean(results)} title="Transactions Mixx by Yas" onClose={reset} wide>
         {results ? <YasDataTable columns={COLUMNS} rows={results} embedded /> : null}

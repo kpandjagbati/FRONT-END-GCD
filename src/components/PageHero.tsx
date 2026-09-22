@@ -1,29 +1,23 @@
+import type { ReactNode } from "react";
+
 type PageHeroProps = {
   title: string;
   description: string;
   image: string;
-  imageClassName?: string;
+  children: ReactNode;
 };
 
-export default function PageHero({ title, description, image, imageClassName }: PageHeroProps) {
+export default function PageHero({ title, description, image, children }: Readonly<PageHeroProps>) {
   return (
-    <div className="grid items-center gap-6 rounded-3xl bg-white px-8 py-6 shadow-[0_12px_32px_rgba(1,55,125,0.06)] md:grid-cols-[1fr_1fr]">
-      <div>
-        <h1 className="text-2xl font-bold text-yas-navy">{title}</h1>
-        <p className="mt-2 max-w-md text-sm font-medium leading-relaxed text-neutral-600">
-          {description}
-        </p>
+    <div className="mx-auto grid w-full max-w-5xl items-center justify-center gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,36rem)] lg:gap-x-10 lg:gap-y-2">
+      <div className="w-full max-w-xs">
+        <h1 className="text-xl font-bold text-yas-navy sm:text-2xl">{title}</h1>
+        <p className="mt-2 text-sm font-medium leading-relaxed text-neutral-600">{description}</p>
         <div className="mt-4 h-1.5 w-24 rounded-full bg-yas-yellow" />
       </div>
-      <div className="flex justify-center md:justify-end">
-        <span className="yas-illustration-well flex h-44 w-full max-w-md items-center justify-center rounded-2xl bg-[#eef4ff] px-4">
-          <img
-            src={image}
-            alt=""
-            className={imageClassName ?? "yas-illustration h-40 w-auto max-w-full object-contain"}
-          />
-        </span>
-      </div>
+      <div className="hidden lg:block" />
+      <img src={image} alt="" className="h-auto w-full max-w-xs object-contain lg:max-w-sm" />
+      {children}
     </div>
   );
 }

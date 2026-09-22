@@ -37,14 +37,14 @@ export default function YasModal({
 
   return createPortal(
     <div
-      className="yas-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-[#01377d]/40 p-4 backdrop-blur-[2px]"
+      className="yas-modal-backdrop fixed inset-0 z-50 flex items-end justify-center bg-[#01377d]/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="yas-modal-title"
-        className={`yas-modal-panel relative max-h-[90vh] w-full overflow-y-auto rounded-3xl bg-white shadow-[0_28px_80px_rgba(1,55,125,0.22)] ${
+        className={`yas-modal-panel relative max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-[0_28px_80px_rgba(1,55,125,0.22)] sm:rounded-3xl ${
           wide ? "max-w-6xl" : "max-w-3xl"
         }`}
         onClick={(event) => event.stopPropagation()}
@@ -57,7 +57,7 @@ export default function YasModal({
         >
           <IconClose className="size-5" />
         </button>
-        <div className="p-6 md:p-8">
+        <div className="p-5 sm:p-6 md:p-8">
           <h2 id="yas-modal-title" className="pr-10 text-xl font-bold text-yas-navy">
             {title}
           </h2>
