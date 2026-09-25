@@ -73,6 +73,8 @@ body {
   height: 100%;
   overflow-x: hidden;
   color-scheme: light;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 html.dark {
@@ -137,7 +139,7 @@ html.dark .bg-yas-surface {
 }
 
 .yas-card {
-  @apply rounded-2xl bg-yas-surface p-5 shadow-[0_18px_50px_rgba(1,55,125,0.08)] sm:p-8;
+  @apply w-full min-w-0 rounded-2xl bg-yas-surface p-4 shadow-[0_18px_50px_rgba(1,55,125,0.08)] sm:p-8;
 }
 
 .yas-banner {
@@ -155,7 +157,7 @@ html.dark .yas-card {
 }
 
 .yas-input {
-  @apply h-11 w-full appearance-none rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-800 shadow-none outline-none transition-colors;
+  @apply h-11 w-full appearance-none rounded-xl border border-neutral-200 bg-white px-3 text-base text-neutral-800 shadow-none outline-none transition-colors sm:text-sm;
 }
 
 .yas-input::-webkit-calendar-picker-indicator,
@@ -413,7 +415,7 @@ html.dark .yas-spinner {
 }
 
 .yas-title {
-  @apply text-xl font-bold text-yas-navy;
+  @apply text-lg font-bold text-yas-navy sm:text-xl;
 }
 
 .yas-link {

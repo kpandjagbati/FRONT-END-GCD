@@ -57,7 +57,7 @@ const CRITERIA = [
 
 type CriteriaId = (typeof CRITERIA)[number]["id"];
 
-function SensBadge({ value }: { value: string }) {
+function SensBadge({ value }: Readonly<{ value: string }>) {
   const incoming = value === "E";
   return (
     <span
@@ -111,6 +111,9 @@ export default function AppelsPage() {
   const [mailNoticeKey, setMailNoticeKey] = useState(0);
   const isClient = useIsClient();
   const { loading, results, run, reset } = useVoirSearch(searchAppelsMock);
+  const [dateDebut, setDateDebut] = useState("");
+  const [dateFin, setDateFin] = useState("");
+  const [searchPeriod, setSearchPeriod] = useState<{ debut: string; fin: string } | null>(null);
   const active = CRITERIA.find((item) => item.id === activeId) ?? null;
 
   function resetMail() {
@@ -127,10 +130,17 @@ export default function AppelsPage() {
     setMailNotice(null);
   }, []);
 
+  function resetDates() {
+    setDateDebut("");
+    setDateFin("");
+    setSearchPeriod(null);
+  }
+
   function openCard(id: CriteriaId) {
     if (loading) return;
     reset();
     resetMail();
+    resetDates();
     setActiveId(id);
   }
 
@@ -138,6 +148,7 @@ export default function AppelsPage() {
     if (loading) return;
     setActiveId(null);
     resetMail();
+    resetDates();
     reset();
   }
 
@@ -145,6 +156,7 @@ export default function AppelsPage() {
     if (sendMail) {
       announcePdfMail(mailInput);
     }
+    setSearchPeriod({ debut: dateDebut, fin: dateFin });
     await run();
   }
 
@@ -166,6 +178,7 @@ export default function AppelsPage() {
       }
       setActiveId(null);
       resetMail();
+      resetDates();
       reset();
     }
 
@@ -179,9 +192,9 @@ export default function AppelsPage() {
   }, [active, loading, reset]);
 
   return (
-    <section className="my-auto w-full py-6">
+    <section className="my-auto w-full min-w-0 py-3 sm:py-6">
       <YasLoadingOverlay open={loading} />
-      <div className="flex flex-col items-center gap-8 lg:flex-row lg:items-center lg:justify-center lg:gap-8">
+      <div className="flex flex-col items-center gap-6 lg:flex-row lg:items-center lg:justify-center lg:gap-8">
         <div className="w-full max-w-xs shrink-0 lg:max-w-sm">
           <h1 className="text-xl font-bold text-yas-navy sm:text-2xl">Appels Détaillés</h1>
           <p className="mt-2 text-sm font-medium leading-relaxed text-neutral-600">
@@ -192,7 +205,7 @@ export default function AppelsPage() {
           <img
             src="/illustrations/appels-hero.svg"
             alt=""
-            className="mt-6 h-auto w-full object-contain"
+            className="mt-4 hidden h-auto w-full object-contain sm:block sm:mt-6"
           />
         </div>
 
@@ -231,7 +244,7 @@ export default function AppelsPage() {
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="appels-modal-title"
-                className={`yas-modal-panel relative max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-[0_28px_80px_rgba(1,55,125,0.22)] sm:rounded-3xl ${
+                className={`yas-modal-panel relative max-h-[92dvh] w-full min-w-0 overflow-y-auto rounded-t-3xl bg-white shadow-[0_28px_80px_rgba(1,55,125,0.22)] sm:rounded-3xl ${
                   results ? "max-w-6xl" : "max-w-3xl"
                 }`}
                 onClick={(event) => event.stopPropagation()}
@@ -240,14 +253,14 @@ export default function AppelsPage() {
                   type="button"
                   aria-label="Fermer"
                   onClick={closeModal}
-                  className="absolute right-4 top-4 z-10 flex size-10 items-center justify-center rounded-full bg-white/90 text-yas-navy shadow-sm hover:bg-white"
+                  className="absolute right-3 top-3 z-10 flex size-10 items-center justify-center rounded-full bg-white/90 text-yas-navy shadow-sm hover:bg-white sm:right-4 sm:top-4"
                 >
                   <IconClose className="size-5" />
                 </button>
 
                 <div
                   className={`yas-illustration-well flex items-center justify-center bg-[#eef4ff] px-4 sm:px-8 ${
-                    results ? "h-20 sm:h-28" : "h-32 sm:h-44"
+                    results ? "h-16 sm:h-28" : "h-24 sm:h-44"
                   }`}
                 >
                   <img
@@ -257,14 +270,14 @@ export default function AppelsPage() {
                   />
                 </div>
 
-                <form className="yas-bubbles p-5 sm:p-8" onSubmit={(event) => event.preventDefault()}>
-                  <h2 id="appels-modal-title" className="text-xl font-bold text-yas-navy">
+                <form className="yas-bubbles p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-8" onSubmit={(event) => event.preventDefault()}>
+                  <h2 id="appels-modal-title" className="pr-10 text-lg font-bold text-yas-navy sm:text-xl">
                     {active.title}
                   </h2>
                   <p className="mt-1 text-sm text-neutral-500">{active.desc}</p>
                   <div className="mt-3 h-1.5 w-16 rounded-full bg-yas-yellow" />
 
-                  <div className="mt-6 grid gap-5 md:grid-cols-3">
+                  <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
                     <div>
                       <label className="yas-label">
                         {active.title} <span className="text-red-500">*</span>
@@ -275,13 +288,13 @@ export default function AppelsPage() {
                       <label className="yas-label">
                         Date début <span className="text-red-500">*</span>
                       </label>
-                      <DateField name="dateDebut" />
+                      <DateField name="dateDebut" value={dateDebut} onChange={setDateDebut} />
                     </div>
                     <div>
                       <label className="yas-label">
                         Date fin <span className="text-red-500">*</span>
                       </label>
-                      <DateField name="dateFin" />
+                      <DateField name="dateFin" value={dateFin} onChange={setDateFin} />
                     </div>
                   </div>
 
@@ -314,7 +327,7 @@ export default function AppelsPage() {
                     </div>
                   ) : null}
 
-                  <div className="mt-8 flex flex-wrap justify-center gap-4">
+                  <div className="mt-8 flex flex-wrap justify-center gap-2 sm:gap-4">
                     <VoirButton onClick={handleVoir} />
                     <PdfRedButton />
                     <PdfNavyButton />
@@ -353,8 +366,8 @@ export default function AppelsPage() {
                           <div>
                             <dt className="font-semibold text-neutral-400">Période</dt>
                             <dd className="mt-0.5 font-medium text-neutral-700">
-                              {formatDateTime(APPELS_RESULT_META.periodeDebut)} →{" "}
-                              {formatDateTime(APPELS_RESULT_META.periodeFin)}
+                              {formatDateTime(searchPeriod?.debut || APPELS_RESULT_META.periodeDebut)} →{" "}
+                              {formatDateTime(searchPeriod?.fin || APPELS_RESULT_META.periodeFin)}
                             </dd>
                           </div>
                         </dl>

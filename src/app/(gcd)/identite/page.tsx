@@ -28,7 +28,7 @@ export default function IdentitePage() {
   const { loading, results, run, reset } = useVoirSearch(searchIdentitesMock);
 
   return (
-    <section className="my-auto w-full py-6">
+    <section className="my-auto w-full min-w-0 py-3 sm:py-6">
       <YasLoadingOverlay open={loading} />
       <PageHero
         title="Identités"
@@ -50,7 +50,7 @@ export default function IdentitePage() {
               <input className="yas-input" name="prenoms" />
             </div>
           </div>
-          <div className="mt-8 flex flex-wrap justify-center gap-4">
+          <div className="mt-8 flex flex-wrap justify-center gap-2 sm:gap-4">
             <VoirButton onClick={run} />
             <PdfRedButton />
             <PdfGrayButton />

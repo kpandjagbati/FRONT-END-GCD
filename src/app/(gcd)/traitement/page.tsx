@@ -2,6 +2,8 @@
 
 import { useRef, useState } from "react";
 import { IconClose, IconFile, IconWarning } from "@/components/icons";
+import YasLoadingOverlay from "@/components/YasLoadingOverlay";
+import { mockDelay } from "@/lib/mock-delay";
 
 const CSV_COLUMNS = ["type", "valeur", "date_debut", "date_fin"] as const;
 
@@ -18,21 +20,44 @@ function formatFileSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
 }
 
+function isCsv(file: File) {
+  const name = file.name.toLowerCase();
+  return name.endsWith(".csv") || file.type === "text/csv";
+}
+
 export default function TraitementPage() {
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function takeFile(next?: File) {
+    setNotice(null);
     if (!next) return;
-    if (!next.name.toLowerCase().endsWith(".csv")) return;
+    if (!isCsv(next)) {
+      setError("Seuls les fichiers .csv sont acceptés.");
+      return;
+    }
+    setError(null);
     setFile(next);
   }
 
+  async function handleProceed() {
+    if (!file || loading) return;
+    setLoading(true);
+    setNotice(null);
+    await mockDelay(true);
+    setLoading(false);
+    setNotice(`Fichier « ${file.name} » pris en compte. L’envoi réel se fera quand l’API sera branchée.`);
+  }
+
   return (
-    <section className="flex min-h-0 flex-1 items-center justify-center overflow-hidden py-2">
+    <section className="flex min-h-0 flex-1 items-center justify-center overflow-x-hidden overflow-y-auto py-2">
+      <YasLoadingOverlay open={loading} />
       <div className="flex w-full max-w-5xl flex-col items-center gap-6 lg:flex-row lg:items-center lg:justify-center lg:gap-8">
-        <div className="w-full max-w-xs shrink-0">
+        <div className="w-full min-w-0 max-w-xs shrink-0">
           <h1 className="text-xl font-bold text-yas-navy sm:text-2xl">Traitements</h1>
           <p className="mt-2 text-sm font-medium leading-relaxed text-neutral-600">
             Lancer un traitement CSV en masse.
@@ -41,11 +66,11 @@ export default function TraitementPage() {
           <img
             src="/illustrations/traitements.svg"
             alt=""
-            className="mt-4 h-auto max-h-40 w-full object-contain"
+            className="mt-4 hidden h-auto max-h-40 w-full object-contain sm:block"
           />
         </div>
 
-        <div className="yas-bubbles w-full max-w-xl rounded-2xl bg-white p-4 shadow-[0_18px_50px_rgba(1,55,125,0.08)] sm:p-5">
+        <div className="yas-bubbles w-full min-w-0 max-w-xl rounded-2xl bg-white p-3 shadow-[0_18px_50px_rgba(1,55,125,0.08)] sm:p-5">
           <div className="flex gap-3 rounded-2xl bg-[#fff6ea] px-3.5 py-3">
             <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-yas-yellow text-yas-navy">
               <IconWarning className="size-4" />
@@ -68,12 +93,12 @@ export default function TraitementPage() {
             </div>
           </div>
 
-          <div className="mt-4 overflow-hidden rounded-xl border border-neutral-100">
+          <div className="mt-4 overflow-x-auto rounded-xl border border-neutral-100">
             <div className="flex items-center justify-between bg-[#f7f9fc] px-3 py-2">
               <p className="text-xs font-semibold text-yas-navy">Exemple de fichier</p>
               <span className="text-[11px] font-medium text-neutral-400">CSV</span>
             </div>
-            <table className="w-full text-left text-xs">
+            <table className="w-full min-w-[28rem] text-left text-xs">
               <thead className="bg-yas-navy text-white">
                 <tr>
                   {CSV_COLUMNS.map((column) => (
@@ -123,7 +148,11 @@ export default function TraitementPage() {
               <button
                 type="button"
                 aria-label="Retirer le fichier"
-                onClick={() => setFile(null)}
+                onClick={() => {
+                  setFile(null);
+                  setNotice(null);
+                  setError(null);
+                }}
                 className="flex size-8 items-center justify-center rounded-full text-neutral-400 transition hover:bg-white hover:text-yas-navy"
               >
                 <IconClose className="size-4" />
@@ -157,9 +186,15 @@ export default function TraitementPage() {
             </button>
           )}
 
+          {error ? <p className="mt-2 text-center text-xs font-semibold text-red-500">{error}</p> : null}
+          {notice ? (
+            <p className="mt-2 text-center text-xs font-semibold text-yas-navy">{notice}</p>
+          ) : null}
+
           <button
             type="button"
-            disabled={!file}
+            disabled={!file || loading}
+            onClick={handleProceed}
             className="btn mt-4 h-10 min-h-10 w-full rounded-xl border-none bg-yas-navy px-5 font-semibold text-white hover:bg-[#012d66] disabled:bg-neutral-200 disabled:text-neutral-400"
           >
             Procéder au traitement

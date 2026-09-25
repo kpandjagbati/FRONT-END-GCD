@@ -48,7 +48,7 @@ export default function FtthLoginPage() {
   const displayedLigne = formatLigne(ligne || match?.ligne.replace(/^228/, "") || "");
 
   return (
-    <section className="my-auto w-full py-6">
+    <section className="my-auto w-full min-w-0 py-3 sm:py-6">
       <YasLoadingOverlay open={loading} />
       <PageHero
         title="FTTH Login"
@@ -71,7 +71,7 @@ export default function FtthLoginPage() {
             </span>
             <input
               id="ftth-ligne"
-              className="h-11 w-full border-0 bg-transparent px-3 text-sm text-neutral-800 outline-none placeholder:italic placeholder:text-neutral-400"
+              className="h-11 w-full border-0 bg-transparent px-3 text-base text-neutral-800 outline-none placeholder:italic placeholder:text-neutral-400 sm:text-sm"
               inputMode="numeric"
               autoComplete="off"
               placeholder="90 12 34 56"
@@ -121,7 +121,7 @@ export default function FtthLoginPage() {
         {match ? (
           <div className="text-center">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400">Login</p>
-            <p className="mt-3 break-all font-mono text-2xl font-bold text-yas-navy sm:text-3xl">
+            <p className="mt-3 break-all font-mono text-xl font-bold text-yas-navy sm:text-3xl">
               {match.login}
             </p>
             <p className="mt-2 text-sm font-medium text-neutral-500">228 {displayedLigne}</p>

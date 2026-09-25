@@ -37,7 +37,7 @@ function InfoRow({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-neutral-100 py-2.5 last:border-b-0 last:pb-0">
       <dt className="shrink-0 text-xs font-medium text-neutral-500">{label}</dt>
-      <dd className="text-right text-sm font-semibold text-yas-navy">{value}</dd>
+      <dd className="min-w-0 break-words text-right text-sm font-semibold text-yas-navy">{value}</dd>
     </div>
   );
 }
@@ -70,14 +70,14 @@ export default function IdentificationPage() {
   const searchedNumber = phone.trim() ? `228 ${phone.trim()}` : "—";
 
   return (
-    <section className="my-auto w-full space-y-8 py-6">
+    <section className="my-auto w-full min-w-0 space-y-6 py-3 sm:space-y-8 sm:py-6">
       <PageHero
         title="Identification"
         description="Identifier un profil à partir du numéro."
         image="/illustrations/identification.svg"
       >
         <form onSubmit={onSubmit} className="yas-card w-full max-w-xl text-center">
-          <h2 className="yas-title mb-6">Veuillez renseigner le numéro de téléphone sans 228</h2>
+          <h2 className="yas-title mb-6 text-balance">Veuillez renseigner le numéro de téléphone sans 228</h2>
           <div className="mx-auto max-w-sm text-left">
             <label className="yas-label">Numéro de téléphone</label>
             <input
@@ -104,15 +104,15 @@ export default function IdentificationPage() {
           className="yas-card mx-auto w-full max-w-5xl overflow-hidden"
         >
           <header className="flex flex-col gap-4 border-b border-neutral-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4">
-              <span className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-[#eef4ff] text-lg font-bold text-yas-navy">
+            <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[#eef4ff] text-sm font-bold text-yas-navy sm:size-16 sm:text-lg">
                 {initials(SAMPLE.firstName, SAMPLE.lastName) || <IconUser className="size-7" />}
               </span>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
                   Information des identités
                 </p>
-                <h2 className="mt-0.5 text-lg font-bold text-yas-navy sm:text-xl">{fullName}</h2>
+                <h2 className="mt-0.5 break-words text-base font-bold text-yas-navy sm:text-xl">{fullName}</h2>
                 <p className="mt-1 text-sm font-medium text-neutral-500">{searchedNumber}</p>
               </div>
             </div>

@@ -52,11 +52,11 @@ export default function YasDataTable<T extends { id: string }>({
       className={
         embedded
           ? "overflow-hidden rounded-2xl border border-neutral-100 bg-white"
-          : "overflow-hidden rounded-3xl bg-white shadow-[0_12px_32px_rgba(1,55,125,0.06)]"
+          : "overflow-hidden rounded-2xl bg-white shadow-[0_12px_32px_rgba(1,55,125,0.06)] sm:rounded-3xl"
       }
     >
-      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5">
-        <div className="relative z-10 flex items-center self-start overflow-hidden rounded-full border border-neutral-200 text-sm text-neutral-500">
+      <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5 sm:py-4">
+        <div className="relative z-10 flex max-w-full items-center self-start overflow-hidden rounded-full border border-neutral-200 text-xs text-neutral-500 sm:text-sm">
           <button
             type="button"
             aria-label="Page précédente"
@@ -97,11 +97,11 @@ export default function YasDataTable<T extends { id: string }>({
             setPage(1);
           }}
           placeholder="Rechercher..."
-          className="h-9 w-full rounded-full border border-neutral-200 px-4 text-sm outline-none placeholder:text-neutral-400 focus:border-yas-navy sm:max-w-[220px]"
+          className="h-9 w-full rounded-full border border-neutral-200 px-4 text-base outline-none placeholder:text-neutral-400 focus:border-yas-navy sm:max-w-[220px] sm:text-sm"
         />
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="-mx-1 overflow-x-auto overscroll-x-contain px-1">
         <table className={`min-w-full text-left ${compact ? "text-xs" : "text-sm"}`}>
           <thead>
             <tr className="border-t border-neutral-100 bg-[#f7f9fc]">

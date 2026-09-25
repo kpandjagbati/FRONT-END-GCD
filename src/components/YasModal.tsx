@@ -44,7 +44,7 @@ export default function YasModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="yas-modal-title"
-        className={`yas-modal-panel relative max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-[0_28px_80px_rgba(1,55,125,0.22)] sm:rounded-3xl ${
+        className={`yas-modal-panel relative max-h-[92dvh] w-full min-w-0 overflow-y-auto rounded-t-3xl bg-white shadow-[0_28px_80px_rgba(1,55,125,0.22)] sm:rounded-3xl ${
           wide ? "max-w-6xl" : "max-w-3xl"
         }`}
         onClick={(event) => event.stopPropagation()}
@@ -53,12 +53,12 @@ export default function YasModal({
           type="button"
           aria-label="Fermer"
           onClick={onClose}
-          className="absolute right-4 top-4 z-10 flex size-10 items-center justify-center rounded-full bg-white text-yas-navy shadow-sm hover:bg-neutral-50"
+          className="absolute right-3 top-3 z-10 flex size-10 shrink-0 items-center justify-center rounded-full bg-white text-yas-navy shadow-sm hover:bg-neutral-50 sm:right-4 sm:top-4"
         >
           <IconClose className="size-5" />
         </button>
-        <div className="p-5 sm:p-6 md:p-8">
-          <h2 id="yas-modal-title" className="pr-10 text-xl font-bold text-yas-navy">
+        <div className="p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-6 md:p-8 sm:pb-8">
+          <h2 id="yas-modal-title" className="pr-10 text-lg font-bold text-yas-navy sm:text-xl">
             {title}
           </h2>
           <div className="mt-3 h-1.5 w-16 rounded-full bg-yas-yellow" />

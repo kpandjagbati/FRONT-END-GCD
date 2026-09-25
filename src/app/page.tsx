@@ -48,12 +48,12 @@ export default function LoginPage() {
   return (
     <div
       ref={root}
-      className="relative flex h-dvh items-center justify-center overflow-hidden bg-[#eef2f7] p-3 sm:p-4"
+      className="relative flex h-dvh items-center justify-center overflow-hidden bg-[#eef2f7] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:p-4"
     >
       <div className="pointer-events-none absolute -right-16 bottom-0 size-80 rounded-full bg-black/5 blur-3xl" />
 
-      <div className="login-card relative grid max-h-[calc(100dvh-1.5rem)] w-full max-w-[960px] overflow-hidden rounded-3xl bg-white shadow-[0_24px_60px_rgba(1,55,125,0.10)] md:grid-cols-2">
-        <div className="login-brand relative flex flex-col items-center justify-center overflow-hidden bg-yas-yellow px-10 py-10 text-center text-yas-navy">
+      <div className="login-card relative grid max-h-[calc(100dvh-1.5rem)] w-full max-w-[960px] overflow-y-auto rounded-3xl bg-white shadow-[0_24px_60px_rgba(1,55,125,0.10)] md:grid-cols-2 md:overflow-hidden">
+        <div className="login-brand relative flex flex-col items-center justify-center overflow-hidden bg-yas-yellow px-6 py-6 text-center text-yas-navy sm:px-10 sm:py-10">
           <div className="pointer-events-none absolute -right-16 -top-16 size-48 rounded-full bg-yas-navy/10" />
           <div className="pointer-events-none absolute -bottom-20 -left-10 size-56 rounded-full bg-yas-navy/5" />
 
@@ -63,10 +63,10 @@ export default function LoginPage() {
               alt="Yas"
               width={220}
               height={198}
-              className="mx-auto h-auto w-[200px] object-contain"
+              className="mx-auto h-auto w-[120px] object-contain sm:w-[200px]"
             />
-            <h1 className="mt-5 text-2xl font-bold tracking-tight">GetCallDetail</h1>
-            <p className="mx-auto mt-2 max-w-sm text-sm font-medium leading-relaxed text-yas-navy/70">
+            <h1 className="mt-3 text-xl font-bold tracking-tight sm:mt-5 sm:text-2xl">GetCallDetail</h1>
+            <p className="mx-auto mt-2 hidden max-w-sm text-sm font-medium leading-relaxed text-yas-navy/70 sm:block">
               Consultez les appels, identités, traitements CSV et logins fibre depuis un seul espace Yas
               Togo.
             </p>
@@ -75,15 +75,15 @@ export default function LoginPage() {
 
         <form
           onSubmit={onSubmit}
-          className="yas-bubbles flex h-full flex-col justify-center bg-[#f7f9fc] px-10 py-8"
+          className="yas-bubbles flex h-full flex-col justify-center bg-[#f7f9fc] px-5 py-6 sm:px-10 sm:py-8"
         >
           <div>
           <img
             src="/illustrations/welcome.svg"
             alt=""
-            className="login-art mx-auto mb-4 h-auto w-[168px] object-contain"
+            className="login-art mx-auto mb-3 h-auto w-[120px] object-contain sm:mb-4 sm:w-[168px]"
           />
-          <h2 className="text-center text-2xl font-bold text-yas-navy">Connexion</h2>
+          <h2 className="text-center text-xl font-bold text-yas-navy sm:text-2xl">Connexion</h2>
           <p className="mt-1 text-center text-sm font-medium text-neutral-500">
             Bienvenue, veuillez vous connecter
           </p>
@@ -99,7 +99,7 @@ export default function LoginPage() {
                 type="text"
                 name="username"
                 placeholder="Votre nom d'utilisateur"
-                className="h-full w-full bg-transparent text-sm outline-none placeholder:italic placeholder:text-neutral-400"
+                className="h-full w-full bg-transparent text-base outline-none placeholder:italic placeholder:text-neutral-400 sm:text-sm"
                 autoComplete="username"
                 required
               />
@@ -117,7 +117,7 @@ export default function LoginPage() {
                 type={showPassword ? "text" : "password"}
                 name="password"
                 placeholder="Votre mot de passe"
-                className="h-full w-full bg-transparent text-sm outline-none placeholder:italic placeholder:text-neutral-400"
+                className="h-full w-full bg-transparent text-base outline-none placeholder:italic placeholder:text-neutral-400 sm:text-sm"
                 autoComplete="current-password"
               />
               <button

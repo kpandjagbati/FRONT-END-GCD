@@ -61,7 +61,7 @@ export default function AppShell({ children }: Readonly<{ children: React.ReactN
 
   return (
     <FileDownloadProvider>
-    <div className="flex h-dvh overflow-hidden bg-yas-page">
+    <div className="flex h-dvh overflow-hidden bg-yas-page pt-[env(safe-area-inset-top)]">
       {mobileOpen ? (
         <button
           type="button"
@@ -110,7 +110,7 @@ export default function AppShell({ children }: Readonly<{ children: React.ReactN
           </button>
         </div>
 
-        <nav className="mt-3 flex flex-1 flex-col gap-1.5 overflow-y-auto px-2.5 pb-4">
+        <nav className="mt-3 flex flex-1 flex-col gap-1.5 overflow-y-auto px-2.5 pb-[max(1rem,env(safe-area-inset-bottom))]">
           {NAV_ITEMS.map((item) => {
             const Icon = ICONS[item.icon];
             const active = pathname === item.href;
@@ -159,13 +159,13 @@ export default function AppShell({ children }: Readonly<{ children: React.ReactN
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="yas-topbar relative z-30 flex h-16 shrink-0 items-center justify-between gap-2 border-b border-black/5 bg-yas-surface px-3 shadow-[0_8px_24px_rgba(1,55,125,0.04)] sm:px-6">
+        <header className="yas-topbar relative z-30 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-black/5 bg-yas-surface px-3 shadow-[0_8px_24px_rgba(1,55,125,0.04)] sm:h-16 sm:px-6">
           <div className="flex min-w-0 items-center gap-2 text-sm sm:gap-3">
             <button
               type="button"
               aria-label="Ouvrir le menu"
               onClick={() => setMobileOpen(true)}
-              className="btn btn-ghost btn-sm shrink-0 text-yas-navy lg:hidden"
+              className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl text-yas-navy lg:hidden"
             >
               <IconMenu className="size-5" />
             </button>
@@ -193,7 +193,13 @@ export default function AppShell({ children }: Readonly<{ children: React.ReactN
           </div>
         </header>
 
-        <main className="yas-content flex min-h-0 flex-1 flex-col overflow-auto p-4 sm:p-6">{children}</main>
+        <main className="yas-content flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto p-3 sm:p-6">
+          {children}
+        </main>
+
+        <footer className="shrink-0 border-t border-black/5 bg-white px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-center sm:px-6">
+          <p className="text-[11px] font-medium text-neutral-500">© 2026 Yas Togo · GetCallDetail</p>
+        </footer>
       </div>
     </div>
     <FileDownloadNotice />

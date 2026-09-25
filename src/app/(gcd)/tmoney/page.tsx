@@ -24,7 +24,7 @@ export default function TmoneyPage() {
   const { loading, results, run, reset } = useVoirSearch(searchMixxMock);
 
   return (
-    <section className="my-auto w-full py-6">
+    <section className="my-auto w-full min-w-0 py-3 sm:py-6">
       <YasLoadingOverlay open={loading} />
       <PageHero
         title="Mixx by Yas"
@@ -55,7 +55,7 @@ export default function TmoneyPage() {
               <DateField name="dateFin" />
             </div>
           </div>
-          <div className="mt-8 flex flex-wrap justify-center gap-4">
+          <div className="mt-8 flex flex-wrap justify-center gap-2 sm:gap-4">
             <VoirButton onClick={run} />
             <PdfRedButton />
             <PdfGrayButton />

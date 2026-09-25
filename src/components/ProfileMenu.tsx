@@ -78,7 +78,7 @@ export default function ProfileMenu() {
     <div ref={rootRef} className="relative">
       <button
         type="button"
-        className={`flex h-11 max-w-[calc(100vw-1.5rem)] items-center gap-2.5 rounded-full bg-white py-1 pl-3.5 pr-1.5 text-left shadow-[0_8px_20px_rgba(1,55,125,0.08)] ring-1 transition ${
+        className={`flex h-10 max-w-[min(16rem,calc(100vw-5.5rem))] items-center gap-2 rounded-full bg-white py-1 pl-2 pr-1.5 text-left shadow-[0_8px_20px_rgba(1,55,125,0.08)] ring-1 transition sm:h-11 sm:max-w-[calc(100vw-1.5rem)] sm:gap-2.5 sm:pl-3.5 ${
           open
             ? "ring-yas-navy/25 shadow-[0_10px_24px_rgba(1,55,125,0.14)]"
             : "ring-black/5 hover:shadow-[0_10px_24px_rgba(1,55,125,0.14)] hover:ring-yas-navy/15"
@@ -95,7 +95,7 @@ export default function ProfileMenu() {
         </span>
         <Avatar name={displayName} status />
         <IconChevronDown
-          className={`mr-1.5 size-4 text-neutral-400 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`size-4 text-neutral-400 transition-transform sm:mr-1.5 ${open ? "rotate-180" : ""}`}
         />
       </button>
 

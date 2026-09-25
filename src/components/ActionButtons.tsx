@@ -35,7 +35,7 @@ export function ActionButton({
       type="button"
       disabled={isDisabled}
       onClick={onClick}
-      className={`btn btn-sm h-9 min-h-9 px-4 sm:px-5 border-none rounded-xl font-semibold shadow-sm ${styles[variant]}`}
+      className={`btn btn-sm h-9 min-h-9 max-w-full px-3 sm:px-5 border-none rounded-xl font-semibold shadow-sm ${styles[variant]}`}
     >
       {children}
     </button>
