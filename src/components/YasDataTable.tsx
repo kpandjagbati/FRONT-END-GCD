@@ -8,6 +8,9 @@ export type YasColumn<T> = {
   key: keyof T & string;
   label: string;
   className?: string;
+  /** Met la valeur en avant (gras / navy). */
+  emphasis?: boolean;
+  align?: "left" | "right" | "center";
   render?: (row: T) => ReactNode;
 };
 
@@ -45,7 +48,7 @@ export default function YasDataTable<T extends { id: string }>({
   const start = total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const end = Math.min(currentPage * PAGE_SIZE, total);
   const visible = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const cellPad = compact ? "px-3 py-2.5" : "px-5 py-3";
+  const cellPad = compact ? "px-3 py-2.5" : "px-4 py-3.5 sm:px-5";
 
   return (
     <div
@@ -55,8 +58,8 @@ export default function YasDataTable<T extends { id: string }>({
           : "overflow-hidden rounded-2xl bg-white shadow-[0_12px_32px_rgba(1,55,125,0.06)] sm:rounded-3xl"
       }
     >
-      <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5 sm:py-4">
-        <div className="relative z-10 flex max-w-full items-center self-start overflow-hidden rounded-full border border-neutral-200 text-xs text-neutral-500 sm:text-sm">
+      <div className="flex flex-col gap-3 border-b border-neutral-100 bg-[#fbfcfe] px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5 sm:py-3.5">
+        <div className="relative z-10 flex max-w-full items-center self-start overflow-hidden rounded-full border border-neutral-200 bg-white text-xs text-neutral-500 sm:text-sm">
           <button
             type="button"
             aria-label="Page précédente"
@@ -71,7 +74,7 @@ export default function YasDataTable<T extends { id: string }>({
           >
             ‹
           </button>
-          <span className="border-x border-neutral-200 px-3 py-1.5 whitespace-nowrap">
+          <span className="border-x border-neutral-200 px-3 py-1.5 whitespace-nowrap font-medium text-neutral-600">
             {start} - {end} sur {total}
           </span>
           <button
@@ -97,19 +100,25 @@ export default function YasDataTable<T extends { id: string }>({
             setPage(1);
           }}
           placeholder="Rechercher..."
-          className="h-9 w-full rounded-full border border-neutral-200 px-4 text-base outline-none placeholder:text-neutral-400 focus:border-yas-navy sm:max-w-[220px] sm:text-sm"
+          className="h-9 w-full rounded-full border border-neutral-200 bg-white px-4 text-base outline-none placeholder:text-neutral-400 focus:border-yas-navy focus:shadow-[0_0_0_3px_rgba(1,55,125,0.08)] sm:max-w-[220px] sm:text-sm"
         />
       </div>
 
       <div className="-mx-1 overflow-x-auto overscroll-x-contain px-1">
         <table className={`min-w-full text-left ${compact ? "text-xs" : "text-sm"}`}>
           <thead>
-            <tr className="border-t border-neutral-100 bg-[#f7f9fc]">
+            <tr className="bg-yas-navy">
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className={`whitespace-nowrap font-semibold uppercase tracking-wide text-neutral-400 ${
-                    compact ? "px-3 py-2.5 text-[10px]" : "px-5 py-3"
+                  className={`whitespace-nowrap font-semibold uppercase tracking-wide text-white/90 ${
+                    compact ? "px-3 py-2.5 text-[10px]" : "px-4 py-3 text-[11px] sm:px-5"
+                  } ${
+                    column.align === "right"
+                      ? "text-right"
+                      : column.align === "center"
+                        ? "text-center"
+                        : "text-left"
                   }`}
                 >
                   {column.label}
@@ -119,21 +128,35 @@ export default function YasDataTable<T extends { id: string }>({
           </thead>
           <tbody>
             {visible.length === 0 ? (
-              <tr className="border-t border-neutral-100">
-                <td colSpan={columns.length} className="px-5 py-8 text-center text-neutral-400">
+              <tr>
+                <td colSpan={columns.length} className="px-5 py-10 text-center text-sm font-medium text-neutral-400">
                   Aucun résultat
                 </td>
               </tr>
             ) : (
-              visible.map((row) => (
-                <tr key={row.id} className="border-t border-neutral-100 hover:bg-[#f7f9fc]/80">
-                  {columns.map((column, index) => {
+              visible.map((row, rowIndex) => (
+                <tr
+                  key={row.id}
+                  className={`border-t border-neutral-100 transition-colors hover:bg-[#eef4ff]/55 ${
+                    rowIndex % 2 === 1 ? "bg-[#f8fafc]" : "bg-white"
+                  }`}
+                >
+                  {columns.map((column) => {
                     const raw = String(row[column.key] ?? "").trim();
+                    const emphasis = column.emphasis ?? false;
                     return (
                       <td
                         key={column.key}
                         className={`${cellPad} ${column.className ?? "whitespace-nowrap"} ${
-                          index === 0 ? "font-semibold text-neutral-800" : "text-neutral-600"
+                          emphasis
+                            ? "font-bold text-yas-navy"
+                            : "font-medium text-neutral-600"
+                        } ${
+                          column.align === "right"
+                            ? "text-right"
+                            : column.align === "center"
+                              ? "text-center"
+                              : "text-left"
                         }`}
                       >
                         {column.render ? column.render(row) : raw || "—"}

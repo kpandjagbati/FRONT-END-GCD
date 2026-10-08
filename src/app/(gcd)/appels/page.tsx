@@ -11,12 +11,28 @@ import {
 } from "@/components/ActionButtons";
 import DateField from "@/components/DateField";
 import { IconChip, IconClose, IconPhone, IconPhoneOutgoing, IconSim } from "@/components/icons";
-import MailInboxNotice from "@/components/MailInboxNotice";
 import YasDataTable, { type YasColumn } from "@/components/YasDataTable";
 import YasLoadingOverlay from "@/components/YasLoadingOverlay";
+import { SearchAlert, EmptyResults } from "@/components/SearchFeedback";
 import { formatDateTime } from "@/lib/format-date";
-import { APPELS_RESULT_META, searchAppelsMock, type AppelRow } from "@/lib/mock-appels";
-import { resolvePdfMailAddress } from "@/lib/session";
+import { saveBlob } from "@/lib/downloads";
+import {
+  asRecords,
+  downloadNamedFile,
+  field,
+  generateCallsFile,
+  generatedFileName,
+  searchCalls,
+  type CallSearch,
+} from "@/lib/gcd-api";
+import { type AppelRow } from "@/lib/types-appels";
+import { consumePrefill, rememberSearch, subscribePrefill } from "@/lib/recent-searches";
+import {
+  validateCalledNumber,
+  validateCallerNumber,
+  validatePeriod,
+  validateRequired,
+} from "@/lib/search-guards";
 import { useIsClient } from "@/lib/use-client";
 import { useVoirSearch } from "@/lib/use-voir-search";
 
@@ -51,11 +67,53 @@ const CRITERIA = [
     desc: "Rechercher par numéro appelé.",
     image: "/illustrations/identites.svg",
     icon: IconPhoneOutgoing,
-    placeholder: "Ex. 22890123456",
+    placeholder: "Ex. 22890107500",
   },
 ] as const;
 
 type CriteriaId = (typeof CRITERIA)[number]["id"];
+
+function loose(row: Record<string, unknown>, parts: string[]) {
+  for (const [name, value] of Object.entries(row)) {
+    if (value == null || typeof value === "object") continue;
+    const key = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!parts.some((part) => key.includes(part))) continue;
+    const text = String(value).trim();
+    if (text) return text;
+  }
+  return "";
+}
+
+function splitDateTime(value: string) {
+  const match = value.trim().match(/^(\d{4}-\d{2}-\d{2}|\d{2}[/-]\d{2}[/-]\d{4})[ T](\d{2}:\d{2}(?::\d{2})?)/);
+  if (!match) return { date: value, time: "" };
+  return { date: match[1], time: match[2] };
+}
+
+function toCallRow(row: Record<string, unknown>, index: number): AppelRow {
+  const rawDate =
+    field(row, ["date", "dateAppel", "callDate", "startDate", "startTime", "dateHeure", "eventDate"]) ||
+    loose(row, ["dateheure", "calldate", "startdate", "eventdate", "dateappel"]);
+  const stamp = splitDateTime(rawDate);
+  return {
+    id: field(row, ["id"]) || String(index + 1),
+    appelant: field(row, ["appelant", "callingNumber", "callingParty", "aNumber", "aParty", "msisdn", "caller"]),
+    appele: field(row, ["appele", "calledNumber", "calledParty", "bNumber", "bParty", "called"]),
+    identiteAppelee:
+      field(row, ["identiteAppelee", "identiteAppele", "calledIdentity", "calledName", "bName"]) ||
+      loose(row, ["calledname", "calledidentity", "bname", "identite"]),
+    date: stamp.date || loose(row, ["timestamp", "datetime", "callstart", "jour", "dateappel"]),
+    heure: field(row, ["heure", "heureAppel", "time", "callTime", "startHour"]) || stamp.time || loose(row, ["heure", "calltime"]),
+    duree: field(row, ["duree", "dureeAppel", "duration", "callDuration"]) || loose(row, ["duree", "duration"]),
+    type: field(row, ["type", "typeAppel", "callType", "serviceType"]) || loose(row, ["typeappel", "calltype", "servicetype", "recordtype"]),
+    sens: field(row, ["sens", "sensAppel", "direction", "callDirection"]) || loose(row, ["direction", "sens", "callflow"]),
+    imsi: field(row, ["imsi"]),
+    imei: field(row, ["imei"]),
+    localisation:
+      field(row, ["localisation", "localite", "location", "cellId", "cell", "cellName"]) ||
+      loose(row, ["cell", "locali", "site", "cgi"]),
+  };
+}
 
 function SensBadge({ value }: Readonly<{ value: string }>) {
   const incoming = value === "E";
@@ -71,12 +129,12 @@ function SensBadge({ value }: Readonly<{ value: string }>) {
 }
 
 const RESULT_COLUMNS: YasColumn<AppelRow>[] = [
-  { key: "appelant", label: "Appelant" },
-  { key: "appele", label: "Appelé" },
-  { key: "identiteAppelee", label: "Identite appelé" },
+  { key: "appelant", label: "Appelant", emphasis: true },
+  { key: "appele", label: "Appelé", emphasis: true },
+  { key: "identiteAppelee", label: "Identite appelé", emphasis: true },
   { key: "date", label: "Date", render: (row) => formatDateTime(row.date) },
   { key: "heure", label: "Heure" },
-  { key: "duree", label: "Duree" },
+  { key: "duree", label: "Duree", emphasis: true },
   {
     key: "type",
     label: "Type",
@@ -99,45 +157,53 @@ const RESULT_COLUMNS: YasColumn<AppelRow>[] = [
   {
     key: "localisation",
     label: "Localisation",
-    className: "max-w-[160px] whitespace-normal break-words",
+    className: "max-w-[180px] whitespace-normal break-words",
   },
 ];
 
 export default function AppelsPage() {
   const [activeId, setActiveId] = useState<CriteriaId | null>(null);
   const [sendMail, setSendMail] = useState(false);
+  const [mailPending, setMailPending] = useState(false);
   const [mailInput, setMailInput] = useState("");
-  const [mailNotice, setMailNotice] = useState<string | null>(null);
-  const [mailNoticeKey, setMailNoticeKey] = useState(0);
   const isClient = useIsClient();
-  const { loading, results, run, reset } = useVoirSearch(searchAppelsMock);
+  const [query, setQuery] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState<"pdf-red" | "pdf-navy" | "excel" | "word" | null>(null);
   const [dateDebut, setDateDebut] = useState("");
   const [dateFin, setDateFin] = useState("");
   const [searchPeriod, setSearchPeriod] = useState<{ debut: string; fin: string } | null>(null);
+  const [searchedValue, setSearchedValue] = useState("");
+  const [replay, setReplay] = useState(false);
+  const loadCalls = useCallback(
+    () =>
+      searchCalls({
+        criteria: activeId ?? "numero",
+        searchValue: query,
+        startDate: dateDebut,
+        endDate: dateFin,
+      }).then((data) => asRecords(data).map(toCallRow)),
+    [activeId, dateDebut, dateFin, query],
+  );
+  const { loading, results, error, run, reset } = useVoirSearch(loadCalls);
   const active = CRITERIA.find((item) => item.id === activeId) ?? null;
 
   function resetMail() {
     setSendMail(false);
     setMailInput("");
+    setMailPending(false);
   }
-
-  function announcePdfMail(typedEmail: string) {
-    setMailNotice(resolvePdfMailAddress(typedEmail));
-    setMailNoticeKey((value) => value + 1);
-  }
-
-  const closeMailNotice = useCallback(() => {
-    setMailNotice(null);
-  }, []);
 
   function resetDates() {
+    setQuery("");
+    setFormError(null);
     setDateDebut("");
     setDateFin("");
     setSearchPeriod(null);
   }
 
   function openCard(id: CriteriaId) {
-    if (loading) return;
+    if (loading || exporting) return;
     reset();
     resetMail();
     resetDates();
@@ -145,7 +211,7 @@ export default function AppelsPage() {
   }
 
   function closeModal() {
-    if (loading) return;
+    if (loading || exporting) return;
     setActiveId(null);
     resetMail();
     resetDates();
@@ -153,26 +219,117 @@ export default function AppelsPage() {
   }
 
   async function handleVoir() {
-    if (sendMail) {
-      announcePdfMail(mailInput);
+    const problem =
+      validateRequired(query, "Renseignez la valeur à rechercher.") ||
+      (activeId === "appele" ? validateCalledNumber(query) : null) ||
+      (activeId === "numero" ? validateCallerNumber(query) : null) ||
+      validatePeriod(dateDebut, dateFin);
+    if (problem) {
+      setFormError(problem);
+      return;
     }
+    setFormError(null);
     setSearchPeriod({ debut: dateDebut, fin: dateFin });
+    setSearchedValue(query.trim());
+    rememberSearch({
+      module: "appels",
+      href: "/appels",
+      summary: `${active?.title ?? "Appels"} · ${query.trim()} · ${dateDebut} → ${dateFin}`,
+      payload: { criteria: activeId ?? "numero", query, dateDebut, dateFin },
+    });
     await run();
+  } 
+
+  function currentCall(outputType: string, secureFile = false): CallSearch {
+    const email = mailInput.trim();
+    return {
+      criteria: activeId ?? "numero",
+      searchValue: query,
+      startDate: dateDebut,
+      endDate: dateFin,
+      secureFile,
+      addAttachment: sendMail,
+      ...(sendMail && email ? { email } : {}),
+      outputType,
+    };
+  }
+
+  async function handleGenerate(target: "pdf-red" | "pdf-navy" | "excel" | "word") {
+    const problem =
+      validateRequired(query, "Renseignez la valeur à rechercher.") ||
+      (activeId === "appele" ? validateCalledNumber(query) : null) ||
+      (activeId === "numero" ? validateCallerNumber(query) : null) ||
+      validatePeriod(dateDebut, dateFin);
+    if (problem) {
+      setFormError(problem);
+      return;
+    }
+    const outputType = target === "word" || target === "excel" ? target : "pdf";
+    const secureFile = target === "pdf-red";
+    const email = mailInput.trim();
+    if (sendMail && email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setFormError("Saisissez une adresse e-mail valide, ou laissez le champ vide.");
+      return;
+    }
+    setFormError(null);
+    if (sendMail) setMailPending(true);
+    setExporting(target);
+    try {
+      const input = currentCall(outputType, secureFile);
+      const generated = await generateCallsFile(input);
+      const filename = generatedFileName(generated);
+      if (!filename) {
+        if (!input.addAttachment) throw new Error("Le serveur n'a pas renvoyé de fichier.");
+        return;
+      }
+      const file = await downloadNamedFile(filename, input);
+      const passwordName = generated?.passwordFileName;
+      const passwordFile = passwordName ? await downloadNamedFile(passwordName, input) : null;
+      saveBlob(filename, file);
+      if (passwordName && passwordFile) {
+        window.setTimeout(() => saveBlob(passwordName, passwordFile), 400);
+      } else if (secureFile) {
+        setFormError("Le PDF est téléchargé, mais le serveur n'a pas renvoyé le fichier mot de passe.");
+      }
+    } catch (cause) {
+      setFormError(cause instanceof Error ? cause.message : "La génération du fichier a échoué.");
+    } finally {
+      setExporting(null);
+    }
   }
 
   function onSendMailChange(checked: boolean) {
     setSendMail(checked);
-    if (checked && results) {
-      announcePdfMail(mailInput);
-    }
+    if (!checked) setMailPending(false);
   }
+
+  useEffect(() => {
+    function apply() {
+      const payload = consumePrefill("appels");
+      if (!payload?.criteria) return;
+      setActiveId(payload.criteria as CriteriaId);
+      setQuery(payload.query ?? "");
+      setDateDebut(payload.dateDebut ?? "");
+      setDateFin(payload.dateFin ?? "");
+      setReplay(true);
+    }
+    apply();
+    return subscribePrefill("appels", apply);
+  }, []);
+
+  useEffect(() => {
+    if (!replay) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReplay(false);
+    void handleVoir();
+  }, [replay]);
 
   useEffect(() => {
     if (!active) return;
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
-      if (loading) {
+      if (loading || exporting) {
         event.preventDefault();
         return;
       }
@@ -189,11 +346,11 @@ export default function AppelsPage() {
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [active, loading, reset]);
+  }, [active, exporting, loading, reset]);
 
   return (
     <section className="my-auto w-full min-w-0 py-3 sm:py-6">
-      <YasLoadingOverlay open={loading} />
+      <YasLoadingOverlay open={loading || Boolean(exporting)} />
       <div className="flex flex-col items-center gap-6 lg:flex-row lg:items-center lg:justify-center lg:gap-8">
         <div className="w-full max-w-xs shrink-0 lg:max-w-sm">
           <h1 className="text-xl font-bold text-yas-navy sm:text-2xl">Appels Détaillés</h1>
@@ -282,7 +439,18 @@ export default function AppelsPage() {
                       <label className="yas-label">
                         {active.title} <span className="text-red-500">*</span>
                       </label>
-                      <input className="yas-input" placeholder={active.placeholder} autoFocus />
+                      <input
+                        className="yas-input"
+                        placeholder={active.placeholder}
+                        value={query}
+                        onChange={(event) => setQuery(event.target.value)}
+                        autoFocus
+                      />
+                      {active.id === "appele" || active.id === "numero" ? (
+                        <p className="mt-1.5 text-xs font-medium text-neutral-500">
+                          L&apos;indicatif du pays est obligatoire : 228.
+                        </p>
+                      ) : null}
                     </div>
                     <div>
                       <label className="yas-label">
@@ -327,12 +495,17 @@ export default function AppelsPage() {
                     </div>
                   ) : null}
 
+                  <SearchAlert
+                    tone={exporting ? "info" : "error"}
+                    message={exporting ? "Génération du fichier en cours…" : formError || error}
+                  />
+
                   <div className="mt-8 flex flex-wrap justify-center gap-2 sm:gap-4">
                     <VoirButton onClick={handleVoir} />
-                    <PdfRedButton />
-                    <PdfNavyButton />
-                    <ExcelButton />
-                    <WordButton />
+                    <PdfRedButton disabled={Boolean(exporting)} onClick={() => void handleGenerate("pdf-red")} />
+                    <PdfNavyButton disabled={Boolean(exporting)} onClick={() => void handleGenerate("pdf-navy")} />
+                    <ExcelButton disabled={Boolean(exporting)} onClick={() => void handleGenerate("excel")} />
+                    <WordButton disabled={Boolean(exporting)} onClick={() => void handleGenerate("word")} />
                   </div>
 
                   {results ? (
@@ -342,7 +515,7 @@ export default function AppelsPage() {
                           <div>
                             <p className="text-sm font-bold text-yas-navy">Résultats des appels</p>
                             <p className="mt-0.5 text-xs font-medium text-neutral-500">
-                              {results.length} ligne{results.length > 1 ? "s" : ""} · {APPELS_RESULT_META.nom}
+                              {results.length} ligne{results.length > 1 ? "s" : ""}
                             </p>
                           </div>
                           <div className="flex flex-wrap gap-2 text-[11px] font-semibold">
@@ -357,22 +530,21 @@ export default function AppelsPage() {
                         <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
                           <div>
                             <dt className="font-semibold text-neutral-400">Abonné</dt>
-                            <dd className="mt-0.5 font-bold text-neutral-800">{APPELS_RESULT_META.abonne}</dd>
-                          </div>
-                          <div>
-                            <dt className="font-semibold text-neutral-400">Adresse</dt>
-                            <dd className="mt-0.5 font-medium text-neutral-700">{APPELS_RESULT_META.adresse}</dd>
+                            <dd className="mt-0.5 font-bold text-neutral-800">{searchedValue || "—"}</dd>
                           </div>
                           <div>
                             <dt className="font-semibold text-neutral-400">Période</dt>
                             <dd className="mt-0.5 font-medium text-neutral-700">
-                              {formatDateTime(searchPeriod?.debut || APPELS_RESULT_META.periodeDebut)} →{" "}
-                              {formatDateTime(searchPeriod?.fin || APPELS_RESULT_META.periodeFin)}
+                              {formatDateTime(searchPeriod?.debut)} → {formatDateTime(searchPeriod?.fin)}
                             </dd>
                           </div>
                         </dl>
                       </div>
-                      <YasDataTable columns={RESULT_COLUMNS} rows={results} embedded compact />
+                      {results.length === 0 ? (
+                        <EmptyResults message="Aucun appel pour cette recherche." />
+                      ) : (
+                        <YasDataTable columns={RESULT_COLUMNS} rows={results} embedded compact />
+                      )}
                     </div>
                   ) : null}
                 </form>
@@ -382,9 +554,35 @@ export default function AppelsPage() {
           )
         : null}
 
-      {mailNotice ? (
-        <MailInboxNotice key={mailNoticeKey} email={mailNotice} onClose={closeMailNotice} />
-      ) : null}
+      {isClient && mailPending
+        ? createPortal(
+            <div className="fixed inset-0 z-[95] flex items-center justify-center bg-[#01377d]/40 p-4">
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="mail-pending-title"
+                className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-[0_28px_80px_rgba(1,55,125,0.22)]"
+              >
+                <button
+                  type="button"
+                  aria-label="Fermer"
+                  onClick={() => setMailPending(false)}
+                  className="absolute right-3 top-3 flex size-10 items-center justify-center rounded-full text-yas-navy hover:bg-neutral-100"
+                >
+                  <IconClose className="size-5" />
+                </button>
+                <h2 id="mail-pending-title" className="pr-10 text-lg font-bold text-yas-navy">
+                  Envoi par mail
+                </h2>
+                <div className="mt-3 h-1.5 w-16 rounded-full bg-yas-yellow" />
+                <p className="mt-6 rounded-xl bg-[#e8f6ee] px-4 py-3 text-center text-sm font-semibold text-[#1f7a46]">
+                  Demande en cours ! Vous recevrez un mail une fois le traitement terminé
+                </p>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </section>
   );
 }

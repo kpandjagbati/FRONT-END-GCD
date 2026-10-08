@@ -1,8 +1,6 @@
 "use client";
 
 import { IconEye, IconFile, IconLock } from "@/components/icons";
-import { useFileDownload } from "@/components/FileDownload";
-import type { ExportKind, ExportSource } from "@/lib/downloads";
 
 type Variant = "voir" | "pdf-red" | "pdf-navy" | "pdf-gray" | "excel" | "word" | "valider" | "voir-blue";
 
@@ -21,25 +19,39 @@ export function ActionButton({
   variant,
   children,
   disabled,
+  loading,
   onClick,
 }: Readonly<{
   variant: Variant;
   children: React.ReactNode;
   disabled?: boolean;
+  loading?: boolean;
   onClick?: () => void;
 }>) {
-  const isDisabled = disabled;
-
   return (
     <button
       type="button"
-      disabled={isDisabled}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       onClick={onClick}
-      className={`btn btn-sm h-9 min-h-9 max-w-full px-3 sm:px-5 border-none rounded-xl font-semibold shadow-sm ${styles[variant]}`}
+      className={`btn btn-sm h-9 min-h-9 max-w-full px-3 sm:px-5 border-none rounded-xl font-semibold shadow-sm disabled:opacity-100 ${styles[variant]} ${
+        disabled && !loading ? "opacity-60" : ""
+      }`}
     >
       {children}
     </button>
   );
+}
+
+function ButtonMark({
+  loading,
+  light,
+  children,
+}: Readonly<{ loading?: boolean; light?: boolean; children: React.ReactNode }>) {
+  if (loading) {
+    return <span className={`yas-spinner-sm ${light ? "text-yas-navy" : ""}`} aria-hidden="true" />;
+  }
+  return children;
 }
 
 export function VoirButton({
@@ -59,68 +71,75 @@ export function VoirButton({
   );
 }
 
-function ExportButton({
-  kind,
-  variant,
-  children,
-  file,
-}: Readonly<{
-  kind: ExportKind;
-  variant: Variant;
-  children: React.ReactNode;
-  file?: ExportSource;
-}>) {
-  const { start, busy, state } = useFileDownload();
-  const active = busy && state?.kind === kind;
-
+export function PdfRedButton({
+  onClick,
+  disabled,
+  loading,
+}: { onClick?: () => void; disabled?: boolean; loading?: boolean } = {}) {
   return (
-    <ActionButton variant={variant} disabled={busy} onClick={() => start(kind, file)}>
-      {children}
-      {active ? <span className="yas-spinner-sm" /> : null}
+    <ActionButton variant="pdf-red" onClick={onClick} disabled={disabled} loading={loading}>
+      PDF
+      <ButtonMark loading={loading}>
+        <IconLock className="size-4" />
+      </ButtonMark>
     </ActionButton>
   );
 }
 
-export function PdfRedButton({ file }: { file?: ExportSource } = {}) {
+export function PdfNavyButton({
+  onClick,
+  disabled,
+  loading,
+}: { onClick?: () => void; disabled?: boolean; loading?: boolean } = {}) {
   return (
-    <ExportButton kind="pdf-locked" variant="pdf-red" file={file}>
+    <ActionButton variant="pdf-navy" onClick={onClick} disabled={disabled} loading={loading}>
       PDF
-      <IconLock className="size-4" />
-    </ExportButton>
+      <ButtonMark loading={loading}>
+        <IconFile className="size-4" />
+      </ButtonMark>
+    </ActionButton>
   );
 }
 
-export function PdfNavyButton({ file }: { file?: ExportSource } = {}) {
+export function PdfGrayButton({
+  onClick,
+  disabled,
+  loading,
+}: { onClick?: () => void; disabled?: boolean; loading?: boolean } = {}) {
   return (
-    <ExportButton kind="pdf" variant="pdf-navy" file={file}>
+    <ActionButton variant="pdf-gray" onClick={onClick} disabled={disabled} loading={loading}>
       PDF
-      <IconFile className="size-4" />
-    </ExportButton>
+      {loading ? <span className="yas-spinner-sm text-yas-navy" aria-hidden="true" /> : null}
+    </ActionButton>
   );
 }
 
-export function PdfGrayButton({ file }: { file?: ExportSource } = {}) {
+export function ExcelButton({
+  onClick,
+  disabled,
+  loading,
+}: { onClick?: () => void; disabled?: boolean; loading?: boolean } = {}) {
   return (
-    <ExportButton kind="pdf" variant="pdf-gray" file={file}>
-      PDF
-    </ExportButton>
-  );
-}
-
-export function ExcelButton() {
-  return (
-    <ExportButton kind="excel" variant="excel">
+    <ActionButton variant="excel" onClick={onClick} disabled={disabled} loading={loading}>
       Excel
-      <IconFile className="size-4" />
-    </ExportButton>
+      <ButtonMark loading={loading}>
+        <IconFile className="size-4" />
+      </ButtonMark>
+    </ActionButton>
   );
 }
 
-export function WordButton() {
+export function WordButton({
+  onClick,
+  disabled,
+  loading,
+}: { onClick?: () => void; disabled?: boolean; loading?: boolean } = {}) {
   return (
-    <ExportButton kind="word" variant="word">
+    <ActionButton variant="word" onClick={onClick} disabled={disabled} loading={loading}>
       Word
-      <IconFile className="size-4" />
-    </ExportButton>
+      <ButtonMark loading={loading} light>
+        <IconFile className="size-4" />
+      </ButtonMark>
+    </ActionButton>
   );
 }

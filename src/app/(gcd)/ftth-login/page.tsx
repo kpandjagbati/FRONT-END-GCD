@@ -1,13 +1,18 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { VoirButton } from "@/components/ActionButtons";
 import PageHero from "@/components/PageHero";
 import YasLoadingOverlay from "@/components/YasLoadingOverlay";
 import YasModal from "@/components/YasModal";
 import { IconCopy, IconLogin, IconPhone } from "@/components/icons";
-import { searchFtthMock } from "@/lib/mock-ftth";
+import { field, getFtthLogin } from "@/lib/gcd-api";
+import type { FtthRow } from "@/lib/types-ftth";
+import { consumePrefill, rememberSearch, subscribePrefill } from "@/lib/recent-searches";
 import { useVoirSearch } from "@/lib/use-voir-search";
+import { SearchAlert } from "@/components/SearchFeedback";
 
 function formatLigne(value: string) {
   return value.replace(/(\d{2})(?=\d)/g, "$1 ").trim();
@@ -15,20 +20,61 @@ function formatLigne(value: string) {
 
 export default function FtthLoginPage() {
   const [ligne, setLigne] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+  const [replay, setReplay] = useState(false);
   const [copied, setCopied] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const { loading, results, run, reset } = useVoirSearch(() => searchFtthMock(ligne));
+  const { loading, results, error, run, reset } = useVoirSearch(() =>
+    getFtthLogin(ligne).then((data) => {
+      if (typeof data === "string" && data.trim()) {
+        return [{ id: "1", ligne, login: data.trim() }] satisfies FtthRow[];
+      }
+      if (!data || typeof data !== "object") return [];
+      const row = data as Record<string, unknown>;
+      const login = field(row, ["login", "ftthLogin", "userName", "username"]);
+      if (!login) return [];
+      return [{ id: "1", ligne: field(row, ["dn", "ligne", "msisdn"]) || ligne, login }];
+    }),
+  );
   const match = results?.[0];
 
+  useEffect(() => {
+    function apply() {
+      const payload = consumePrefill("ftth");
+      if (!payload?.ligne) return;
+      setLigne(payload.ligne);
+      setReplay(true);
+    }
+    apply();
+    return subscribePrefill("ftth", apply);
+  }, []);
+
+  useEffect(() => {
+    if (!replay) return;
+    setReplay(false);
+    void handleVoir();
+  }, [replay]);
+
   function onLigneChange(value: string) {
-    setLigne(value.replace(/\D/g, "").slice(0, 8));
+    setLigne(value.replace(/\D/g, "").slice(0, 12));
     setCopied(false);
     if (results) reset();
     setDetailsOpen(false);
   }
 
   async function handleVoir() {
+    if (ligne.length < 6) {
+      setFormError("Renseignez le numéro de ligne ou le DN fibre.");
+      return;
+    }
+    setFormError(null);
     setCopied(false);
+    rememberSearch({
+      module: "ftth",
+      href: "/ftth-login",
+      summary: `FTTH · 228 ${ligne}`,
+      payload: { ligne },
+    });
     await run();
     setDetailsOpen(true);
   }
@@ -58,27 +104,27 @@ export default function FtthLoginPage() {
         <form className="yas-card w-full max-w-xl" onSubmit={onSubmit}>
           <h2 className="yas-title text-center">Numéro de la ligne</h2>
           <p className="mx-auto mt-2 max-w-sm text-center text-sm font-medium leading-relaxed text-neutral-500">
-            Saisissez le numéro pour afficher le login fibre associé.
+            Saisissez le DN de la ligne pour afficher le login fibre.
           </p>
 
           <label className="yas-label mt-6" htmlFor="ftth-ligne">
-            Numéro de la ligne
+            DN de la ligne
           </label>
           <div className="flex overflow-hidden rounded-xl border border-neutral-200 bg-white transition-shadow focus-within:border-yas-navy focus-within:shadow-[0_0_0_3px_rgba(1,55,125,0.12)]">
             <span className="flex items-center gap-1.5 border-r border-neutral-200 bg-[#f7f9fc] px-3 text-sm font-semibold text-yas-navy">
               <IconPhone className="size-4" />
-              228
             </span>
             <input
               id="ftth-ligne"
               className="h-11 w-full border-0 bg-transparent px-3 text-base text-neutral-800 outline-none placeholder:italic placeholder:text-neutral-400 sm:text-sm"
               inputMode="numeric"
               autoComplete="off"
-              placeholder="90 12 34 56"
+              placeholder="22259387"
               value={formatLigne(ligne)}
               onChange={(event) => onLigneChange(event.target.value)}
             />
           </div>
+          <SearchAlert message={formError || error} />
 
           <div className="mt-5 rounded-2xl bg-[#f7f9fc] p-4">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
@@ -105,7 +151,9 @@ export default function FtthLoginPage() {
                   <IconLogin className="size-5" />
                 </span>
                 <p className="text-sm font-medium text-neutral-500">
-                  Le login s’affichera ici après la recherche.
+                  {results && results.length === 0
+                    ? "Aucun login pour ce numéro."
+                    : "Le login s’affichera ici après la recherche."}
                 </p>
               </div>
             )}

@@ -1,6 +1,15 @@
+"use client";
+
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
+import { getSessionToken, subscribeSession } from "@/lib/session";
+
+function useIsLoggedIn() {
+  return useSyncExternalStore(subscribeSession, () => Boolean(getSessionToken()), () => false);
+}
 
 export default function NotFound() {
+  const loggedIn = useIsLoggedIn();
   return (
     <div className="flex min-h-dvh items-center justify-center bg-[#eef2f7] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
       <div className="w-full max-w-md rounded-3xl bg-white px-6 py-8 text-center shadow-[0_24px_60px_rgba(1,55,125,0.10)] sm:px-10 sm:py-10">
@@ -23,10 +32,10 @@ export default function NotFound() {
         </p>
         <div className="mx-auto mt-4 h-1.5 w-16 rounded-full bg-yas-yellow" />
         <Link
-          href="/accueil"
+          href={loggedIn ? "/accueil" : "/"}
           className="mt-8 inline-flex h-11 items-center justify-center rounded-xl bg-yas-yellow px-6 text-sm font-semibold text-yas-navy transition hover:bg-[#f0ce00]"
         >
-          Retour à l&apos;accueil
+          {loggedIn ? "Retour à l'accueil" : "Retour à la connexion"}
         </Link>
       </div>
     </div>

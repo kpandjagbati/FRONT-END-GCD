@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { IconEye, IconEyeOff, IconLock, IconUser } from "@/components/icons";
-import { saveSession } from "@/lib/session";
+import { loginUser } from "@/lib/gcd-api";
+import { saveSession, saveSessionToken } from "@/lib/session";
 
 gsap.registerPlugin(useGSAP);
 
@@ -13,6 +14,7 @@ export default function LoginPage() {
   const router = useRouter();
   const root = useRef<HTMLDivElement>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useGSAP(
     () => {
@@ -38,11 +40,24 @@ export default function LoginPage() {
     { scope: root },
   );
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    saveSession(String(formData.get("username") ?? ""), String(formData.get("password") ?? ""));
-    router.push("/accueil");
+    const username = String(formData.get("username") ?? "").trim();
+    const password = String(formData.get("password") ?? "");
+    if (!username || !password) {
+      setFormError("Renseignez le nom d'utilisateur et le mot de passe.");
+      return;
+    }
+    setFormError(null);
+    try {
+      const token = await loginUser(username, password);
+      saveSession(username, password);
+      saveSessionToken(token);
+      router.push("/accueil");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Connexion impossible.");
+    }
   }
 
   return (
@@ -130,6 +145,12 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
+
+          {formError ? (
+            <p className="login-field mt-4 rounded-xl bg-[#fff1f1] px-3 py-2 text-center text-xs font-semibold text-[#c24545]">
+              {formError}
+            </p>
+          ) : null}
 
           <div className="login-field mt-6 flex justify-end">
             <button

@@ -154,19 +154,18 @@ export function IconChevronsRight({ className }: Readonly<IconProps>) {
   );
 }
 
-export function IconSun({ className }: Readonly<IconProps>) {
+export function IconChevronsDown({ className }: Readonly<IconProps>) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 3v2M12 19v2M5 12H3M21 12h-2M6.2 6.2l1.4 1.4M16.4 16.4l1.4 1.4M6.2 17.8l1.4-1.4M16.4 7.6l1.4-1.4" />
+      <path d="m6 5 6 6 6-6M6 13l6 6 6-6" />
     </svg>
   );
 }
 
-export function IconMoon({ className }: Readonly<IconProps>) {
+export function IconChevronsUp({ className }: Readonly<IconProps>) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-      <path d="M18.5 13.5A7.5 7.5 0 1 1 10.5 5.5 6 6 0 0 0 18.5 13.5Z" />
+      <path d="m6 19 6-6 6 6M6 11l6-6 6 6" />
     </svg>
   );
 }
@@ -221,6 +220,16 @@ export function IconPhoneOutgoing({ className }: Readonly<IconProps>) {
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
       <path d="M6.5 3.5h3l1.5 4-2 1.5a12 12 0 0 0 6 6l1.5-2 4 1.5v3c0 1-1 2-2 2C10 19.5 4.5 14 4.5 5.5c0-1 1-2 2-2z" />
       <path d="M14.5 5.5H20M16.5 3.5 20 5.5 16.5 7.5" />
+    </svg>
+  );
+}
+
+export function IconHistory({ className }: Readonly<IconProps>) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" />
+      <path d="M4.5 4.5V8H8" />
+      <path d="M12 8v4.5l3 2" />
     </svg>
   );
 }

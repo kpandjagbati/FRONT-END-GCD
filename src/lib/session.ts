@@ -1,5 +1,6 @@
 const USERNAME_KEY = "gcd-username";
 const PASSWORD_KEY = "gcd-password";
+const TOKEN_KEY = "gcd-token";
 const SESSION_EVENT = "gcd-session";
 
 const listeners = new Set<() => void>();
@@ -48,18 +49,25 @@ export function getSessionEmail() {
   return username.includes("@") ? username : `${username}@yas.tg`;
 }
 
-export function resolvePdfMailAddress(typedEmail: string) {
-  return typedEmail.trim() || getSessionEmail();
-}
-
 export function getSessionPassword() {
   if (typeof window === "undefined") return "";
   return sessionStorage.getItem(PASSWORD_KEY) ?? "";
 }
 
+export function saveSessionToken(token: string) {
+  sessionStorage.setItem(TOKEN_KEY, token);
+  emitSession();
+}
+
+export function getSessionToken() {
+  if (typeof window === "undefined") return "";
+  return sessionStorage.getItem(TOKEN_KEY) ?? "";
+}
+
 export function clearSession() {
   sessionStorage.removeItem(USERNAME_KEY);
   sessionStorage.removeItem(PASSWORD_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
   emitSession();
 }
 

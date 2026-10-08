@@ -23,7 +23,6 @@ type HomeModule = {
   title: string;
   desc: string;
   image: string;
-  imageDark?: string;
 };
 
 const MODULES: HomeModule[] = [
@@ -32,7 +31,6 @@ const MODULES: HomeModule[] = [
     title: "Mixx by Yas",
     desc: "Transactions par numéro et période.",
     image: "/logo-mixx.svg",
-    imageDark: "/logo-mixx-on-blue.svg",
   },
   {
     href: "/appels",
@@ -91,17 +89,8 @@ function ModuleCard({
         <img
           src={item.image}
           alt=""
-          className={`w-auto max-w-full object-contain ${wide ? "h-[4.75rem] sm:h-[5.5rem]" : "h-16 sm:h-[4.25rem]"} ${
-            item.imageDark ? "dark:hidden" : ""
-          }`}
+          className={`w-auto max-w-full object-contain ${wide ? "h-[4.75rem] sm:h-[5.5rem]" : "h-16 sm:h-[4.25rem]"}`}
         />
-        {item.imageDark ? (
-          <img
-            src={item.imageDark}
-            alt=""
-            className={`hidden w-auto max-w-full object-contain dark:block ${wide ? "h-[4.75rem] sm:h-[5.5rem]" : "h-16 sm:h-[4.25rem]"}`}
-          />
-        ) : null}
       </span>
       <span className={`min-w-0 ${wide ? "flex-1" : "pt-1"}`}>
         <h3 className={`font-bold text-yas-navy ${wide ? "text-lg sm:text-xl" : "text-sm sm:text-base"}`}>{item.title}</h3>

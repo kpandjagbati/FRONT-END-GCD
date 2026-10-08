@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import ProfileMenu from "@/components/ProfileMenu";
-import { FileDownloadNotice, FileDownloadProvider } from "@/components/FileDownload";
+import RecentSearchesMenu from "@/components/RecentSearchesMenu";
 import { BREADCRUMBS, NAV_ITEMS } from "@/lib/nav";
 import {
   IconChevronsLeft,
@@ -60,7 +60,6 @@ export default function AppShell({ children }: Readonly<{ children: React.ReactN
   }, [mobileOpen]);
 
   return (
-    <FileDownloadProvider>
     <div className="flex h-dvh overflow-hidden bg-yas-page pt-[env(safe-area-inset-top)]">
       {mobileOpen ? (
         <button
@@ -72,7 +71,7 @@ export default function AppShell({ children }: Readonly<{ children: React.ReactN
       ) : null}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex h-full w-[min(248px,86vw)] shrink-0 flex-col bg-yas-yellow text-yas-navy shadow-[12px_0_32px_rgba(1,55,125,0.16)] transition-transform duration-200 dark:!bg-[#01275a] dark:text-yas-yellow lg:relative lg:z-auto lg:shadow-none ${
+        className={`fixed inset-y-0 left-0 z-50 flex h-full w-[min(248px,86vw)] shrink-0 flex-col bg-yas-yellow text-yas-navy shadow-[12px_0_32px_rgba(1,55,125,0.16)] transition-transform duration-200 lg:relative lg:z-auto lg:shadow-none ${
           collapsed ? "lg:w-[84px]" : "lg:w-[248px]"
         } ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
       >
@@ -87,7 +86,7 @@ export default function AppShell({ children }: Readonly<{ children: React.ReactN
             />
             <span className={`min-w-0 ${collapsed ? "lg:hidden" : ""}`}>
               <span className="block truncate text-sm font-bold leading-none">GetCallDetail</span>
-              <span className="mt-1 block truncate text-[11px] font-medium text-yas-navy/70 dark:text-yas-yellow/70">
+              <span className="mt-1 block truncate text-[11px] font-medium text-yas-navy/70">
                 Yas Togo
               </span>
             </span>
@@ -96,7 +95,7 @@ export default function AppShell({ children }: Readonly<{ children: React.ReactN
             type="button"
             aria-label="Fermer le menu"
             onClick={() => setMobileOpen(false)}
-            className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border-0 bg-white text-yas-navy shadow-[0_4px_12px_rgba(1,55,125,0.16)] outline-none transition hover:bg-yas-navy hover:text-white focus-visible:bg-yas-navy focus-visible:text-white dark:hover:!bg-[#fcd90b] dark:hover:!text-yas-navy lg:hidden"
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border-0 bg-white text-yas-navy shadow-[0_4px_12px_rgba(1,55,125,0.16)] outline-none transition hover:bg-yas-navy hover:text-white focus-visible:bg-yas-navy focus-visible:text-white lg:hidden"
           >
             <IconClose className="size-4" />
           </button>
@@ -104,7 +103,7 @@ export default function AppShell({ children }: Readonly<{ children: React.ReactN
             type="button"
             aria-label={collapsed ? "Ouvrir le menu" : "Réduire le menu"}
             onClick={() => setCollapsed((value) => !value)}
-            className="hidden size-8 shrink-0 items-center justify-center rounded-full border-0 bg-white text-yas-navy shadow-[0_4px_12px_rgba(1,55,125,0.16)] outline-none transition hover:bg-yas-navy hover:text-white focus-visible:bg-yas-navy focus-visible:text-white dark:hover:!bg-[#fcd90b] dark:hover:!text-yas-navy lg:inline-flex"
+            className="hidden size-8 shrink-0 items-center justify-center rounded-full border-0 bg-white text-yas-navy shadow-[0_4px_12px_rgba(1,55,125,0.16)] outline-none transition hover:bg-yas-navy hover:text-white focus-visible:bg-yas-navy focus-visible:text-white lg:inline-flex"
           >
             {collapsed ? <IconChevronsRight className="size-4" /> : <IconChevronsLeft className="size-4" />}
           </button>
@@ -124,7 +123,7 @@ export default function AppShell({ children }: Readonly<{ children: React.ReactN
                 className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all ${
                   isMixx ? "mixx-nav" : ""
                 } ${
-                  active ? "bg-white text-yas-navy dark:text-yas-navy" : "text-yas-navy/85 hover:bg-black/5 dark:text-yas-yellow/85 dark:hover:bg-white/10"
+                  active ? "bg-white text-yas-navy" : "text-yas-navy/85 hover:bg-black/5"
                 } ${collapsed ? "lg:justify-center lg:px-0" : ""}`}
               >
                 {isMixx ? (
@@ -148,7 +147,7 @@ export default function AppShell({ children }: Readonly<{ children: React.ReactN
             type="button"
             title="Se déconnecter"
             onClick={logoutSession}
-            className={`mt-3 flex items-center gap-3 rounded-xl bg-yas-navy px-3 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#012d66] dark:!bg-[#fcd90b] dark:!text-yas-navy dark:hover:!bg-[#f0ce00] ${
+            className={`mt-3 flex items-center gap-3 rounded-xl bg-yas-navy px-3 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#012d66] ${
               collapsed ? "lg:justify-center lg:px-0" : ""
             }`}
           >
@@ -188,7 +187,8 @@ export default function AppShell({ children }: Readonly<{ children: React.ReactN
               </>
             ) : null}
           </div>
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <RecentSearchesMenu />
             <ProfileMenu />
           </div>
         </header>
@@ -202,7 +202,5 @@ export default function AppShell({ children }: Readonly<{ children: React.ReactN
         </footer>
       </div>
     </div>
-    <FileDownloadNotice />
-    </FileDownloadProvider>
   );
 }

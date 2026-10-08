@@ -1,9 +1,13 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { FormEvent, useEffect, useRef, useState, type ReactNode } from "react";
 import { IconEye, IconUser } from "@/components/icons";
 import PageHero from "@/components/PageHero";
 import { formatDateTime } from "@/lib/format-date";
+import { querySubscriber } from "@/lib/gcd-api";
+import { consumePrefill, rememberSearch, subscribePrefill } from "@/lib/recent-searches";
+import { SearchAlert } from "@/components/SearchFeedback";
 
 const SAMPLE = {
   profileId: "13808874",
@@ -21,9 +25,89 @@ const SAMPLE = {
   addressId: "50769677",
 };
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (Array.isArray(value)) return asRecord(value[0]);
+  if (!value || typeof value !== "object") return null;
+  return value as Record<string, unknown>;
+}
+
+function nested(row: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const found = Object.entries(row).find(([name]) => name.toLowerCase() === key.toLowerCase());
+    if (!found) continue;
+    const record = asRecord(found[1]);
+    if (record) return record;
+  }
+  return null;
+}
+
+function subscriberRow(data: unknown): Record<string, unknown> | null {
+  const row = asRecord(data);
+  if (!row) return null;
+  const merged: Record<string, unknown> = { ...row };
+  for (const [key, value] of Object.entries(row)) {
+    if (nested(row, ["address", "adresse", "addresses", "adresses"]) && /address|adresse/i.test(key)) {
+      continue;
+    }
+    const record = asRecord(value);
+    if (record) Object.assign(merged, record);
+  }
+  return merged;
+}
+
+function norm(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function pick(row: Record<string, unknown>, keys: string[]) {
+  const entries = Object.entries(row);
+  for (const key of keys) {
+    const wanted = norm(key);
+    const found = entries.find(([name]) => norm(name) === wanted);
+    if (!found || found[1] == null || typeof found[1] === "object") continue;
+    const value = String(found[1]).trim();
+    if (value) return value;
+  }
+  return "";
+}
+
+function leafStrings(value: unknown, key = ""): { key: string; value: string }[] {
+  if (Array.isArray(value)) return value.flatMap((item, index) => leafStrings(item, `${key}${index}`));
+  if (value && typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>).flatMap(([childKey, child]) => leafStrings(child, childKey));
+  }
+  if (value == null) return [];
+  const text = String(value).trim();
+  if (!text || text.toUpperCase() === "N/A") return [];
+  return [{ key, value: text }];
+}
+
+function addressFrom(source: Record<string, unknown>) {
+  const leaves = leafStrings(source);
+  const match = (parts: string[], exclude: string[] = []) =>
+    leaves.find((item) => {
+      const key = norm(item.key);
+      if (exclude.some((part) => key.includes(part))) return false;
+      return parts.some((part) => key.includes(part));
+    })?.value ?? "";
+
+  const streetNo = match(["streetno", "streetnumber", "houseno", "buildingno", "housenumber"]);
+  const street = match(["address1", "adresse1", "addressline1", "streetname", "street", "road", "residence"], ["id", "code"]);
+  const address1 = [streetNo, street].filter(Boolean).join(" ") || match(["address", "adresse"], ["id", "code", "type"]);
+  const address2 = match(["address2", "adresse2", "addressline2", "city", "town", "quartier", "district", "area", "region"]);
+  const addressId = match(["addressid", "adresseid", "addrid"]);
+  return { address1, address2, addressId };
+}
+
 function displayValue(value?: string) {
   const trimmed = value?.trim();
   if (!trimmed || trimmed.toUpperCase() === "N/A") return "—";
+  return trimmed;
+}
+
+function addressLine(value?: string) {
+  const trimmed = value?.trim();
+  if (!trimmed || trimmed.toUpperCase() === "N/A" || trimmed.toUpperCase() === "NA") return "NA";
   return trimmed;
 }
 
@@ -53,20 +137,82 @@ function InfoSection({ title, children }: Readonly<{ title: string; children: Re
 
 export default function IdentificationPage() {
   const [phone, setPhone] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+  const [replay, setReplay] = useState(false);
   const [showResult, setShowResult] = useState(false);
+  const [profile, setProfile] = useState(SAMPLE);
   const resultRef = useRef<HTMLElement>(null);
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setShowResult(true);
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 8) {
+      setFormError("Renseignez le numéro sans le 228.");
+      setShowResult(false);
+      return;
+    } 
+    setFormError(null);
+    rememberSearch({
+      module: "identification",
+      href: "/identification",
+      summary: `Identification · ${digits}`,
+      payload: { phone: digits },
+    });
+    try {
+      const data = await querySubscriber(digits);
+      const source = asRecord(data);
+      const row = subscriberRow(data);
+      if (!source || !row) {
+        setFormError("Aucun abonné pour ce numéro.");
+        setShowResult(false);
+        return;
+      }
+      const address = addressFrom(source);
+      setProfile({
+        profileId: pick(row, ["profileId", "subscriberId", "id"]),
+        login: pick(row, ["login", "userName"]),
+        accountId: pick(row, ["accountId", "accountNo", "customerId"]),
+        serviceId: pick(row, ["serviceId", "serviceType"]),
+        serviceCode: pick(row, ["serviceCode", "service"]),
+        lastName: pick(row, ["lastName", "nom", "surname", "familyName"]),
+        firstName: pick(row, ["firstName", "prenoms", "prenom", "givenName"]),
+        smsNumber: pick(row, ["smsNumber", "msisdn", "phone"]) || `228${digits}`,
+        emailId: pick(row, ["emailId", "email"]),
+        activationDate: pick(row, ["activationDate", "activeDate", "createdAt"]),
+        address1: address.address1,
+        address2: address.address2,
+        addressId: address.addressId,
+      });
+      setShowResult(true);
+    } catch (cause) {
+      setShowResult(false);
+      setFormError(cause instanceof Error ? cause.message : "L'identification a échoué.");
+    }
   }
+
+  useEffect(() => {
+    function apply() {
+      const payload = consumePrefill("identification");
+      if (!payload?.phone) return;
+      setPhone(payload.phone);
+      setReplay(true);
+    }
+    apply();
+    return subscribePrefill("identification", apply);
+  }, []);
+
+  useEffect(() => {
+    if (!replay) return;
+    setReplay(false);
+    void onSubmit({ preventDefault() {} } as FormEvent<HTMLFormElement>);
+  }, [replay]);
 
   useEffect(() => {
     if (!showResult) return;
     resultRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [showResult]);
 
-  const fullName = `${SAMPLE.firstName} ${SAMPLE.lastName}`.replace(/\s+/g, " ").trim();
+  const fullName = `${profile.firstName} ${profile.lastName}`.replace(/\s+/g, " ").trim();
   const searchedNumber = phone.trim() ? `228 ${phone.trim()}` : "—";
 
   return (
@@ -86,10 +232,11 @@ export default function IdentificationPage() {
               onChange={(event) => setPhone(event.target.value)}
             />
           </div>
+          <SearchAlert message={formError} />
           <div className="mt-6">
             <button
               type="submit"
-              className="btn btn-sm h-9 min-h-9 rounded-xl border-none bg-yas-yellow px-6 font-semibold text-neutral-800 hover:bg-[#f0ce00]"
+              className="btn btn-sm h-9 min-h-9 rounded-xl border-none bg-yas-yellow px-6 font-semibold text-yas-navy hover:bg-[#f0ce00]"
             >
               Valider
               <IconEye className="size-4" />
@@ -106,7 +253,7 @@ export default function IdentificationPage() {
           <header className="flex flex-col gap-4 border-b border-neutral-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-3 sm:gap-4">
               <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[#eef4ff] text-sm font-bold text-yas-navy sm:size-16 sm:text-lg">
-                {initials(SAMPLE.firstName, SAMPLE.lastName) || <IconUser className="size-7" />}
+                {initials(profile.firstName, profile.lastName) || <IconUser className="size-7" />}
               </span>
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
@@ -118,10 +265,10 @@ export default function IdentificationPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full bg-yas-navy px-3 py-1 text-xs font-semibold text-white">
-                {SAMPLE.serviceCode}
+                {profile.serviceCode}
               </span>
-              <span className="rounded-full bg-yas-yellow px-3 py-1 text-xs font-semibold text-neutral-800">
-                {SAMPLE.serviceId.replaceAll("_", " ")}
+              <span className="rounded-full bg-yas-yellow px-3 py-1 text-xs font-semibold text-yas-navy">
+                {profile.serviceId.replaceAll("_", " ")}
               </span>
             </div>
           </header>
@@ -129,25 +276,25 @@ export default function IdentificationPage() {
 
           <div className="mt-6 grid gap-4 lg:grid-cols-3">
             <InfoSection title="Identifiants principaux">
-              <InfoRow label="ID de profil" value={displayValue(SAMPLE.profileId)} />
-              <InfoRow label="Login" value={displayValue(SAMPLE.login)} />
-              <InfoRow label="ID de compte" value={displayValue(SAMPLE.accountId)} />
-              <InfoRow label="ID de service" value={displayValue(SAMPLE.serviceId)} />
-              <InfoRow label="Code de service" value={displayValue(SAMPLE.serviceCode)} />
+              <InfoRow label="ID de profil" value={displayValue(profile.profileId)} />
+              <InfoRow label="Login" value={displayValue(profile.login)} />
+              <InfoRow label="ID de compte" value={displayValue(profile.accountId)} />
+              <InfoRow label="ID de service" value={displayValue(profile.serviceId)} />
+              <InfoRow label="Code de service" value={displayValue(profile.serviceCode)} />
             </InfoSection>
 
             <InfoSection title="Informations personnelles">
-              <InfoRow label="Nom" value={displayValue(SAMPLE.lastName)} />
-              <InfoRow label="Prénom" value={displayValue(SAMPLE.firstName)} />
-              <InfoRow label="Numéro SMS" value={displayValue(SAMPLE.smsNumber)} />
-              <InfoRow label="E-mail" value={displayValue(SAMPLE.emailId)} />
-              <InfoRow label="Activation" value={formatDateTime(SAMPLE.activationDate)} />
+              <InfoRow label="Nom" value={displayValue(profile.lastName)} />
+              <InfoRow label="Prénom" value={displayValue(profile.firstName)} />
+              <InfoRow label="Numéro SMS" value={displayValue(profile.smsNumber)} />
+              <InfoRow label="E-mail" value={displayValue(profile.emailId)} />
+              <InfoRow label="Activation" value={formatDateTime(profile.activationDate)} />
             </InfoSection>
 
             <InfoSection title="Adresse">
-              <InfoRow label="Adresse 1" value={displayValue(SAMPLE.address1)} />
-              <InfoRow label="Adresse 2" value={displayValue(SAMPLE.address2)} />
-              <InfoRow label="ID d'adresse" value={displayValue(SAMPLE.addressId)} />
+              <InfoRow label="Adresse 1" value={addressLine(profile.address1)} />
+              <InfoRow label="Adresse 2" value={addressLine(profile.address2)} />
+              <InfoRow label="ID d'adresse" value={displayValue(profile.addressId)} />
             </InfoSection>
           </div>
         </article>
