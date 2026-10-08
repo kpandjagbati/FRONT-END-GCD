@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-location-assign-relative-destination */
 const USERNAME_KEY = "gcd-username";
 const PASSWORD_KEY = "gcd-password";
 const TOKEN_KEY = "gcd-token";
