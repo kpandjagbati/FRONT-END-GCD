@@ -158,8 +158,8 @@ export default function AppShell({ children }: Readonly<{ children: React.ReactN
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="yas-topbar relative z-30 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-black/5 bg-yas-surface px-3 shadow-[0_8px_24px_rgba(1,55,125,0.04)] sm:h-16 sm:px-6">
-          <div className="flex min-w-0 items-center gap-2 text-sm sm:gap-3">
+        <header className="yas-topbar relative z-30 flex h-14 shrink-0 items-center justify-between gap-1.5 border-b border-black/5 bg-yas-surface px-2.5 shadow-[0_8px_24px_rgba(1,55,125,0.04)] sm:h-16 sm:gap-2 sm:px-6">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 text-sm sm:gap-3">
             <button
               type="button"
               aria-label="Ouvrir le menu"
@@ -181,24 +181,32 @@ export default function AppShell({ children }: Readonly<{ children: React.ReactN
             {crumb ? (
               <>
                 <span className="hidden text-neutral-300 md:inline">/</span>
-                <Link href={crumb.href} className="truncate font-semibold text-neutral-700 hover:text-yas-navy">
+                <Link
+                  href={crumb.href}
+                  className="min-w-0 truncate text-sm font-semibold text-neutral-700 hover:text-yas-navy"
+                >
                   {crumb.label}
                 </Link>
               </>
             ) : null}
           </div>
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
             <RecentSearchesMenu />
             <ProfileMenu />
           </div>
         </header>
 
-        <main className="yas-content flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto p-3 sm:p-6">
+        <main className="yas-content flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto p-2.5 sm:p-6">
           {children}
         </main>
 
-        <footer className="shrink-0 border-t border-black/5 bg-white px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-center sm:px-6">
-          <p className="text-[11px] font-medium text-neutral-500">© 2026 Yas Togo · GetCallDetail</p>
+        <footer className="shrink-0 border-t border-black/5 bg-white px-2.5 py-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-center sm:px-6 sm:py-3">
+          <p className="text-[10px] font-bold text-neutral-500 sm:text-[11px]">
+            © {new Date().getFullYear()} Yas Togo · GetCallDetail
+          </p>
+          <p className="mt-0.5 text-[9px] font-bold text-neutral-400 sm:text-[10px]">
+            Tous droits réservés. Usage interne uniquement.
+          </p>
         </footer>
       </div>
     </div>

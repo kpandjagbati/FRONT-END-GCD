@@ -1,17 +1,17 @@
 "use client";
 
-import { IconEye, IconFile, IconLock } from "@/components/icons";
+import { IconExcel, IconEye, IconPdf, IconPdfLock, IconWord } from "@/components/icons";
 
 type Variant = "voir" | "pdf-red" | "pdf-navy" | "pdf-gray" | "excel" | "word" | "valider" | "voir-blue";
 
 const styles: Record<Variant, string> = {
   voir: "bg-[#fcd90b] text-neutral-800 hover:bg-[#f0ce00]",
   valider: "bg-[#fcd90b] text-neutral-800 hover:bg-[#f0ce00]",
-  "pdf-red": "bg-[#ef6b6b] text-white hover:bg-[#e85c5c]",
+  "pdf-red": "bg-[#e5252a] text-white hover:bg-[#c91f24]",
   "pdf-navy": "bg-[#01377d] text-white hover:bg-[#012d66]",
-  "pdf-gray": "bg-[#cfcfcf] text-white hover:bg-[#bfbfbf]",
-  excel: "bg-[#2db85a] text-white hover:bg-[#27a64f]",
-  word: "bg-[#cfcfcf] text-white hover:bg-[#bfbfbf] cursor-pointer",
+  "pdf-gray": "bg-[#3b6ea8] text-white hover:bg-[#325e91]",
+  excel: "bg-[#217346] text-white hover:bg-[#1a5c38]",
+  word: "bg-[#2b579a] text-white hover:bg-[#234a82] cursor-pointer",
   "voir-blue": "bg-[#3b3bdb] text-white hover:bg-[#3232c4]",
 };
 
@@ -34,7 +34,7 @@ export function ActionButton({
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       onClick={onClick}
-      className={`btn btn-sm h-9 min-h-9 max-w-full px-3 sm:px-5 border-none rounded-xl font-semibold shadow-sm disabled:opacity-100 ${styles[variant]} ${
+      className={`btn btn-sm h-9 min-h-9 max-w-full shrink-0 gap-1.5 px-2.5 text-xs sm:px-5 sm:text-sm border-none rounded-xl font-semibold shadow-sm disabled:opacity-100 ${styles[variant]} ${
         disabled && !loading ? "opacity-60" : ""
       }`}
     >
@@ -45,11 +45,10 @@ export function ActionButton({
 
 function ButtonMark({
   loading,
-  light,
   children,
-}: Readonly<{ loading?: boolean; light?: boolean; children: React.ReactNode }>) {
+}: Readonly<{ loading?: boolean; children: React.ReactNode }>) {
   if (loading) {
-    return <span className={`yas-spinner-sm ${light ? "text-yas-navy" : ""}`} aria-hidden="true" />;
+    return <span className="yas-spinner-sm" aria-hidden="true" />;
   }
   return children;
 }
@@ -80,7 +79,7 @@ export function PdfRedButton({
     <ActionButton variant="pdf-red" onClick={onClick} disabled={disabled} loading={loading}>
       PDF
       <ButtonMark loading={loading}>
-        <IconLock className="size-4" />
+        <IconPdfLock className="size-4" />
       </ButtonMark>
     </ActionButton>
   );
@@ -95,7 +94,7 @@ export function PdfNavyButton({
     <ActionButton variant="pdf-navy" onClick={onClick} disabled={disabled} loading={loading}>
       PDF
       <ButtonMark loading={loading}>
-        <IconFile className="size-4" />
+        <IconPdf className="size-4" />
       </ButtonMark>
     </ActionButton>
   );
@@ -109,7 +108,9 @@ export function PdfGrayButton({
   return (
     <ActionButton variant="pdf-gray" onClick={onClick} disabled={disabled} loading={loading}>
       PDF
-      {loading ? <span className="yas-spinner-sm text-yas-navy" aria-hidden="true" /> : null}
+      <ButtonMark loading={loading}>
+        <IconPdf className="size-4" />
+      </ButtonMark>
     </ActionButton>
   );
 }
@@ -123,7 +124,7 @@ export function ExcelButton({
     <ActionButton variant="excel" onClick={onClick} disabled={disabled} loading={loading}>
       Excel
       <ButtonMark loading={loading}>
-        <IconFile className="size-4" />
+        <IconExcel className="size-4" />
       </ButtonMark>
     </ActionButton>
   );
@@ -137,8 +138,8 @@ export function WordButton({
   return (
     <ActionButton variant="word" onClick={onClick} disabled={disabled} loading={loading}>
       Word
-      <ButtonMark loading={loading} light>
-        <IconFile className="size-4" />
+      <ButtonMark loading={loading}>
+        <IconWord className="size-4" />
       </ButtonMark>
     </ActionButton>
   );

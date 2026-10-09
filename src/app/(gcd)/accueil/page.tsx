@@ -78,24 +78,34 @@ function ModuleCard({
     <Link
       href={item.href}
       className={`dash-card group flex h-full overflow-hidden rounded-2xl bg-white shadow-[0_12px_32px_rgba(1,55,125,0.06)] ${
-        wide ? "min-h-[8.5rem] flex-row items-center gap-4 px-5 py-4 sm:min-h-[9.5rem] sm:gap-5 sm:px-6 sm:py-5" : "flex-col p-3.5 sm:p-4"
+        wide
+          ? "min-h-[7.5rem] flex-row items-center gap-3 px-3.5 py-3.5 sm:min-h-[9.5rem] sm:gap-5 sm:px-6 sm:py-5"
+          : "flex-col p-3 sm:p-4"
       }`}
     >
       <span
         className={`flex shrink-0 items-center justify-center overflow-hidden ${
-          wide ? "size-[5.5rem] sm:size-[6.75rem]" : "h-[4.75rem] w-full sm:h-[5.25rem]"
+          wide ? "size-[4.5rem] sm:size-[6.75rem]" : "h-16 w-full sm:h-[5.25rem]"
         }`}
       >
         <img
           src={item.image}
           alt=""
-          className={`w-auto max-w-full object-contain ${wide ? "h-[4.75rem] sm:h-[5.5rem]" : "h-16 sm:h-[4.25rem]"}`}
+          className={`w-auto max-w-full object-contain ${wide ? "h-14 sm:h-[5.5rem]" : "h-12 sm:h-[4.25rem]"}`}
         />
       </span>
       <span className={`min-w-0 ${wide ? "flex-1" : "pt-1"}`}>
-        <h3 className={`font-bold text-yas-navy ${wide ? "text-lg sm:text-xl" : "text-sm sm:text-base"}`}>{item.title}</h3>
-        <p className={`mt-0.5 leading-snug text-neutral-500 ${wide ? "text-sm" : "text-xs sm:text-sm"}`}>{item.desc}</p>
-        <span className={`mt-2 inline-flex items-center gap-1 font-semibold text-yas-navy ${wide ? "text-sm" : "text-xs"}`}>
+        <h3 className={`font-bold text-yas-navy ${wide ? "text-base sm:text-xl" : "text-sm sm:text-base"}`}>
+          {item.title}
+        </h3>
+        <p
+          className={`mt-0.5 leading-snug text-neutral-500 ${
+            wide ? "text-xs sm:text-sm" : "hidden text-xs sm:block sm:text-sm"
+          }`}
+        >
+          {item.desc}
+        </p>
+        <span className={`mt-1.5 inline-flex items-center gap-1 font-semibold text-yas-navy sm:mt-2 ${wide ? "text-xs sm:text-sm" : "text-xs"}`}>
           Ouvrir
           <IconArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-1" />
         </span>
@@ -108,7 +118,7 @@ function ModuleColumn({ items }: Readonly<{ items: Array<(typeof MODULES)[number
   const [first, second, third] = items;
 
   return (
-    <div className="grid w-full max-w-md grid-cols-2 gap-2.5 sm:gap-3.5">
+    <div className="grid w-full max-w-md grid-cols-2 gap-2 sm:gap-3.5">
       <ModuleCard key={first.href} item={first} />
       <ModuleCard key={second.href} item={second} />
       <div className="col-span-2">
@@ -200,14 +210,18 @@ export default function AccueilPage() {
           </p>
           <div className="dash-bar mx-auto mt-4 h-1.5 w-24 origin-center rounded-full bg-yas-yellow" />
 
-          <div className="relative mt-4 h-36 w-full sm:mt-5 sm:h-60">
+          <div className="relative mt-3 h-28 w-full sm:mt-5 sm:h-60">
             {SLIDES.map((item, index) => (
               <div
                 key={item.src}
                 className="dash-slide absolute inset-0 flex flex-col items-center justify-center"
                 style={{ visibility: index === 0 ? "visible" : "hidden" }}
               >
-                <img src={item.src} alt="" className="h-full max-h-52 w-full object-contain" />
+                <img
+                  src={item.src}
+                  alt=""
+                  className="h-full max-h-28 w-full object-contain sm:max-h-52"
+                />
               </div>
             ))}
           </div>

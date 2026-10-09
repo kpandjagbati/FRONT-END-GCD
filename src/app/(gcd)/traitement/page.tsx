@@ -441,12 +441,12 @@ export default function TraitementPage() {
 
           {error ? <p className="mt-2 text-center text-xs font-semibold text-red-500">{error}</p> : null}
 
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+          <div className="mt-4 flex flex-col items-stretch gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center sm:gap-3">
             <button
               type="button"
               disabled={!file || loading}
               onClick={handleProceed}
-              className="btn h-10 min-h-10 rounded-xl border-none bg-yas-navy px-5 font-semibold text-white hover:bg-[#012d66] disabled:bg-neutral-200 disabled:text-neutral-400"
+              className="btn h-10 min-h-10 w-full rounded-xl border-none bg-yas-navy px-5 text-sm font-semibold text-white hover:bg-[#012d66] disabled:bg-neutral-200 disabled:text-neutral-400 sm:w-auto"
             >
               Procéder au traitement
             </button>
@@ -457,7 +457,7 @@ export default function TraitementPage() {
                 if (!started) return;
                 setPreviewOpen(true);
               }}
-              className={`btn h-10 min-h-10 rounded-xl border-none px-5 font-semibold ${
+              className={`btn h-10 min-h-10 w-full rounded-xl border-none px-5 text-sm font-semibold sm:w-auto ${
                 started
                   ? "bg-yas-yellow text-yas-navy hover:bg-[#f0ce00]"
                   : "cursor-not-allowed bg-[#f7efb8] text-neutral-400"
@@ -478,7 +478,7 @@ export default function TraitementPage() {
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="traitement-preview-title"
-                className="relative flex h-[min(96dvh,64rem)] w-full max-w-7xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-[0_28px_80px_rgba(1,55,125,0.22)] sm:rounded-3xl"
+                className="relative flex h-[min(92dvh,64rem)] w-full max-w-7xl flex-col overflow-hidden rounded-t-3xl bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_28px_80px_rgba(1,55,125,0.22)] sm:h-[min(96dvh,64rem)] sm:rounded-3xl sm:pb-0"
                 onClick={(event) => event.stopPropagation()}
               >
                 <div className="shrink-0 px-4 pb-0 pt-4 sm:px-6 sm:pt-6">
@@ -504,22 +504,28 @@ export default function TraitementPage() {
                     ref={tableScrollRef}
                     className="h-full overflow-auto rounded-xl border border-neutral-100"
                   >
-                    <table className="w-full min-w-[36rem] text-left text-sm">
-                      <thead className="sticky top-0 z-[1] bg-yas-navy text-xs uppercase tracking-wide text-white">
+                    <table className="w-full min-w-[30rem] text-left text-xs sm:min-w-[36rem] sm:text-sm">
+                      <thead className="sticky top-0 z-[1] bg-yas-navy text-[10px] uppercase tracking-wide text-white sm:text-xs">
                         <tr>
-                          <th className="px-4 py-3 font-semibold">Type</th>
-                          <th className="px-4 py-3 font-semibold">Valeur</th>
-                          <th className="px-4 py-3 font-semibold">Date de début</th>
-                          <th className="px-4 py-3 font-semibold">PDF</th>
+                          <th className="px-2.5 py-2.5 font-semibold sm:px-4 sm:py-3">Type</th>
+                          <th className="px-2.5 py-2.5 font-semibold sm:px-4 sm:py-3">Valeur</th>
+                          <th className="px-2.5 py-2.5 font-semibold sm:px-4 sm:py-3">Date de début</th>
+                          <th className="px-2.5 py-2.5 font-semibold sm:px-4 sm:py-3">PDF</th>
                         </tr>
                       </thead>
                       <tbody>
                         {shown.map((job) => (
                           <tr key={job.id} className="border-t border-neutral-100 bg-white">
-                            <td className="px-4 py-3 font-semibold text-yas-navy">{typeLabel(job.type)}</td>
-                            <td className="px-4 py-3 text-neutral-700">{job.valeur || "—"}</td>
-                            <td className="px-4 py-3 text-neutral-700">{job.dateDebut || "—"}</td>
-                            <td className="px-4 py-3">
+                            <td className="px-2.5 py-2.5 font-semibold text-yas-navy sm:px-4 sm:py-3">
+                              {typeLabel(job.type)}
+                            </td>
+                            <td className="px-2.5 py-2.5 text-neutral-700 sm:px-4 sm:py-3">
+                              {job.valeur || "—"}
+                            </td>
+                            <td className="px-2.5 py-2.5 text-neutral-700 sm:px-4 sm:py-3">
+                              {job.dateDebut || "—"}
+                            </td>
+                            <td className="px-2.5 py-2.5 sm:px-4 sm:py-3">
                               {job.status === "ready" ? (
                                 <PdfRedButton
                                   disabled={!preview && downloading === job.id}

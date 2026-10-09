@@ -78,7 +78,7 @@ export default function ProfileMenu() {
     <div ref={rootRef} className="relative">
       <button
         type="button"
-        className={`flex h-10 max-w-[min(16rem,calc(100vw-5.5rem))] items-center gap-2 rounded-full bg-white py-1 pl-2 pr-1.5 text-left shadow-[0_8px_20px_rgba(1,55,125,0.08)] ring-1 transition sm:h-11 sm:max-w-[calc(100vw-1.5rem)] sm:gap-2.5 sm:pl-3.5 ${
+        className={`flex h-10 items-center gap-1.5 rounded-full bg-white py-1 pl-1.5 pr-1 text-left shadow-[0_8px_20px_rgba(1,55,125,0.08)] ring-1 transition sm:h-11 sm:max-w-[min(16rem,calc(100vw-8rem))] sm:gap-2.5 sm:pl-3.5 sm:pr-1.5 ${
           open
             ? "ring-yas-navy/25 shadow-[0_10px_24px_rgba(1,55,125,0.14)]"
             : "ring-black/5 hover:shadow-[0_10px_24px_rgba(1,55,125,0.14)] hover:ring-yas-navy/15"
@@ -88,14 +88,14 @@ export default function ProfileMenu() {
         onClick={() => setOpen((value) => !value)}
       >
         <span className="hidden min-w-0 sm:flex sm:flex-col sm:items-end">
-          <span className="max-w-[12rem] truncate text-[13px] font-bold leading-tight text-yas-navy">
+          <span className="max-w-[10rem] truncate text-[13px] font-bold leading-tight text-yas-navy md:max-w-[12rem]">
             {displayName}
           </span>
           <span className="text-[10px] font-medium leading-tight text-neutral-400">Connecté</span>
         </span>
         <Avatar name={displayName} status />
         <IconChevronDown
-          className={`size-4 text-neutral-400 transition-transform sm:mr-1.5 ${open ? "rotate-180" : ""}`}
+          className={`hidden size-4 text-neutral-400 transition-transform sm:mr-1.5 sm:block ${open ? "rotate-180" : ""}`}
         />
       </button>
 
@@ -103,7 +103,7 @@ export default function ProfileMenu() {
         <div
           role="dialog"
           aria-label="Informations du profil"
-          className="absolute right-0 top-[calc(100%+12px)] z-50 w-[min(20.5rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl bg-white text-left shadow-[0_24px_60px_rgba(1,55,125,0.18)] ring-1 ring-black/5"
+          className="fixed right-2.5 top-[3.75rem] z-50 w-[min(20.5rem,calc(100vw-1.25rem))] overflow-hidden rounded-2xl bg-white text-left shadow-[0_24px_60px_rgba(1,55,125,0.18)] ring-1 ring-black/5 sm:absolute sm:right-0 sm:top-[calc(100%+12px)]"
           onMouseDown={(event) => event.stopPropagation()}
         >
           <div className="yas-hero px-4 py-4 text-white">

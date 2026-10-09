@@ -19,11 +19,14 @@ export default function YasDataTable<T extends { id: string }>({
   rows,
   embedded = false,
   compact = false,
+  /** Force toutes les colonnes dans la largeur visible (pas de scroll horizontal). */
+  fit = false,
 }: Readonly<{
   columns: YasColumn<T>[];
   rows: T[];
   embedded?: boolean;
   compact?: boolean;
+  fit?: boolean;
 }>) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -48,7 +51,12 @@ export default function YasDataTable<T extends { id: string }>({
   const start = total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const end = Math.min(currentPage * PAGE_SIZE, total);
   const visible = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const cellPad = compact ? "px-3 py-2.5" : "px-4 py-3.5 sm:px-5";
+  const tight = compact || fit;
+  const cellPad = fit
+    ? "px-1.5 py-2 sm:px-2 sm:py-2.5"
+    : tight
+      ? "px-2.5 py-2 sm:px-3 sm:py-2.5"
+      : "px-3 py-3 sm:px-5 sm:py-3.5";
 
   return (
     <div
@@ -58,7 +66,7 @@ export default function YasDataTable<T extends { id: string }>({
           : "overflow-hidden rounded-2xl bg-white shadow-[0_12px_32px_rgba(1,55,125,0.06)] sm:rounded-3xl"
       }
     >
-      <div className="flex flex-col gap-3 border-b border-neutral-100 bg-[#fbfcfe] px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5 sm:py-3.5">
+      <div className="flex flex-col gap-2.5 border-b border-neutral-100 bg-[#fbfcfe] px-2.5 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:px-5 sm:py-3.5">
         <div className="relative z-10 flex max-w-full items-center self-start overflow-hidden rounded-full border border-neutral-200 bg-white text-xs text-neutral-500 sm:text-sm">
           <button
             type="button"
@@ -104,15 +112,27 @@ export default function YasDataTable<T extends { id: string }>({
         />
       </div>
 
-      <div className="-mx-1 overflow-x-auto overscroll-x-contain px-1">
-        <table className={`min-w-full text-left ${compact ? "text-xs" : "text-sm"}`}>
+      <div className={fit ? "overflow-hidden" : "overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]"}>
+        <table
+          className={`w-full text-left ${
+            fit
+              ? "table-fixed text-xs sm:text-sm"
+              : tight
+                ? "min-w-full text-[11px] sm:text-xs"
+                : "min-w-full text-xs sm:text-sm"
+          }`}
+        >
           <thead>
             <tr className="bg-yas-navy">
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className={`whitespace-nowrap font-semibold uppercase tracking-wide text-white/90 ${
-                    compact ? "px-3 py-2.5 text-[10px]" : "px-4 py-3 text-[11px] sm:px-5"
+                  className={`font-semibold uppercase tracking-wide text-white/90 ${
+                    fit
+                      ? "break-words px-1.5 py-2.5 text-[10px] leading-snug sm:px-2 sm:text-[11px]"
+                      : tight
+                        ? "whitespace-nowrap px-2.5 py-2 text-[9px] sm:px-3 sm:py-2.5 sm:text-[10px]"
+                        : "whitespace-nowrap px-3 py-2.5 text-[10px] sm:px-5 sm:py-3 sm:text-[11px]"
                   } ${
                     column.align === "right"
                       ? "text-right"
@@ -147,7 +167,9 @@ export default function YasDataTable<T extends { id: string }>({
                     return (
                       <td
                         key={column.key}
-                        className={`${cellPad} ${column.className ?? "whitespace-nowrap"} ${
+                        className={`${cellPad} ${
+                          column.className ?? (fit ? "break-all align-top" : "whitespace-nowrap")
+                        } ${
                           emphasis
                             ? "font-bold text-yas-navy"
                             : "font-medium text-neutral-600"

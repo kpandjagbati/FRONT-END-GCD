@@ -274,7 +274,7 @@ export default function IdentificationPage() {
           </header>
           <div className="mt-4 h-1.5 w-24 rounded-full bg-yas-yellow" />
 
-          <div className="mt-6 grid gap-4 lg:grid-cols-3">
+          <div className="mt-6 grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
             <InfoSection title="Identifiants principaux">
               <InfoRow label="ID de profil" value={displayValue(profile.profileId)} />
               <InfoRow label="Login" value={displayValue(profile.login)} />

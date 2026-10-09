@@ -109,17 +109,24 @@ export default function DateField({
     const now = new Date();
     return toIso(now.getFullYear(), now.getMonth(), now.getDate());
   }, []);
+  const yearOptions = useMemo(() => {
+    const current = new Date().getFullYear();
+    const years: number[] = [];
+    for (let year = current + 5; year >= current - 40; year -= 1) years.push(year);
+    if (!years.includes(cursor.year)) years.push(cursor.year);
+    return years.sort((a, b) => b - a);
+  }, [cursor.year]);
   const cells = useMemo(() => monthCells(cursor.year, cursor.month), [cursor.month, cursor.year]);
 
   function placePanel() {
     const anchor = buttonRef.current;
     if (!anchor) return;
     const rect = anchor.getBoundingClientRect();
-    const width = Math.min(300, window.innerWidth - 24);
+    const width = Math.min(336, window.innerWidth - 24);
     let left = rect.right - width;
     if (left < 12) left = 12;
     if (left + width > window.innerWidth - 12) left = Math.max(12, window.innerWidth - width - 12);
-    const estimatedHeight = 372;
+    const estimatedHeight = 460;
     let top = rect.bottom + 8;
     if (top + estimatedHeight > window.innerHeight - 12) {
       top = rect.top - estimatedHeight - 8;
@@ -143,6 +150,32 @@ export default function DateField({
     setDisplay(isoToFrenchDate(toIso(year, month, day)));
     setOpen(false);
   }
+
+  function onInputChange(raw: string) {
+    const cleaned = raw.replace(/[^\d/]/g, "").slice(0, 10);
+    let next = cleaned;
+    // Auto jj/mm/aaaa pendant la saisie
+    const digits = cleaned.replace(/\D/g, "").slice(0, 8);
+    if (digits.length >= 5) {
+      next = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+    } else if (digits.length >= 3) {
+      next = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+    } else {
+      next = digits;
+    }
+    setDisplay(next);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    const selected = parseIso(iso);
+    if (!selected) return;
+    setCursor((prev) =>
+      prev.year === selected.year && prev.month === selected.month
+        ? prev
+        : { year: selected.year, month: selected.month },
+    );
+  }, [open, iso]);
 
   useEffect(() => {
     if (!open) return;
@@ -184,7 +217,10 @@ export default function DateField({
         autoComplete="off"
         placeholder={placeholder}
         value={display}
-        onChange={(event) => setDisplay(event.target.value)}
+        onChange={(event) => onInputChange(event.target.value)}
+        onFocus={() => {
+          if (!open) openCalendar();
+        }}
         className="yas-input min-w-0 flex-1"
       />
       <button
@@ -211,16 +247,8 @@ export default function DateField({
               className="fixed z-[90] overflow-hidden rounded-2xl bg-white shadow-[0_24px_50px_rgba(1,55,125,0.22)] ring-1 ring-black/5"
               style={{ top: coords.top, left: coords.left, width: coords.width }}
             >
-              <div className="flex items-center justify-between bg-yas-navy px-2.5 py-2.5 text-white">
-                <div className="flex items-center">
-                  <button
-                    type="button"
-                    aria-label="Année précédente"
-                    onClick={() => setCursor((value) => ({ ...value, year: value.year - 1 }))}
-                    className="flex size-8 items-center justify-center rounded-lg text-white/80 hover:bg-white/10 hover:text-white"
-                  >
-                    <IconChevronsLeft className="size-4" />
-                  </button>
+              <div className="bg-yas-navy px-3 pb-3 pt-3 text-white">
+                <div className="flex items-center justify-between">
                   <button
                     type="button"
                     aria-label="Mois précédent"
@@ -231,15 +259,13 @@ export default function DateField({
                           : { year: value.year, month: value.month - 1 },
                       )
                     }
-                    className="flex size-8 items-center justify-center rounded-lg text-white/80 hover:bg-white/10 hover:text-white"
+                    className="flex size-9 items-center justify-center rounded-xl bg-white/10 text-white transition hover:bg-white/20"
                   >
                     <IconChevronLeft className="size-4" />
                   </button>
-                </div>
-                <p className="min-w-0 truncate text-sm font-bold">
-                  {MONTHS[cursor.month]} {cursor.year}
-                </p>
-                <div className="flex items-center">
+                  <p className="text-sm font-bold tracking-tight">
+                    {MONTHS[cursor.month]} {cursor.year}
+                  </p>
                   <button
                     type="button"
                     aria-label="Mois suivant"
@@ -250,48 +276,99 @@ export default function DateField({
                           : { year: value.year, month: value.month + 1 },
                       )
                     }
-                    className="flex size-8 items-center justify-center rounded-lg text-white/80 hover:bg-white/10 hover:text-white"
+                    className="flex size-9 items-center justify-center rounded-xl bg-white/10 text-white transition hover:bg-white/20"
                   >
                     <IconChevronRight className="size-4" />
                   </button>
-                  <button
-                    type="button"
-                    aria-label="Année suivante"
-                    onClick={() => setCursor((value) => ({ ...value, year: value.year + 1 }))}
-                    className="flex size-8 items-center justify-center rounded-lg text-white/80 hover:bg-white/10 hover:text-white"
-                  >
-                    <IconChevronsRight className="size-4" />
-                  </button>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-white/60" htmlFor={`${inputId}-month`}>
+                      Mois
+                    </label>
+                    <select
+                      id={`${inputId}-month`}
+                      value={cursor.month}
+                      onChange={(event) =>
+                        setCursor((value) => ({ ...value, month: Number(event.target.value) }))
+                      }
+                      className="h-9 w-full cursor-pointer appearance-none rounded-xl border-0 bg-white px-3 text-sm font-semibold text-yas-navy shadow-sm outline-none ring-0 transition hover:bg-[#f7f9fc] focus:ring-2 focus:ring-yas-yellow"
+                    >
+                      {MONTHS.map((month, index) => (
+                        <option key={month} value={index}>
+                          {month}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-white/60" htmlFor={`${inputId}-year`}>
+                      Année
+                    </label>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        aria-label="Année précédente"
+                        onClick={() => setCursor((value) => ({ ...value, year: value.year - 1 }))}
+                        className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white transition hover:bg-white/20"
+                      >
+                        <IconChevronsLeft className="size-3.5" />
+                      </button>
+                      <select
+                        id={`${inputId}-year`}
+                        value={cursor.year}
+                        onChange={(event) =>
+                          setCursor((value) => ({ ...value, year: Number(event.target.value) }))
+                        }
+                        className="h-9 min-w-0 flex-1 cursor-pointer appearance-none rounded-xl border-0 bg-white px-2 text-center text-sm font-semibold text-yas-navy shadow-sm outline-none ring-0 transition hover:bg-[#f7f9fc] focus:ring-2 focus:ring-yas-yellow"
+                      >
+                        {yearOptions.map((year) => (
+                          <option key={year} value={year}>
+                            {year}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        aria-label="Année suivante"
+                        onClick={() => setCursor((value) => ({ ...value, year: value.year + 1 }))}
+                        className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white transition hover:bg-white/20"
+                      >
+                        <IconChevronsRight className="size-3.5" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="h-1 bg-yas-yellow" />
+              <div className="h-1.5 bg-yas-yellow" />
 
-              <div className="p-3">
-                <div className="grid grid-cols-7 text-center text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
+              <div className="bg-[#fbfcfe] p-3">
+                <div className="grid grid-cols-7 text-center text-[11px] font-bold uppercase tracking-wide text-yas-navy/45">
                   {WEEKDAYS.map((day) => (
-                    <span key={day} className="py-1">
+                    <span key={day} className="py-1.5">
                       {day}
                     </span>
                   ))}
                 </div>
-                <div className="mt-1 grid grid-cols-7 gap-y-1 text-center">
+                <div className="mt-0.5 grid grid-cols-7 gap-y-0.5 text-center">
                   {cells.map((cell) => {
-                    const value = toIso(cell.year, cell.month, cell.day);
+                    const cellIso = toIso(cell.year, cell.month, cell.day);
                     const selected = Boolean(iso) && isSameDay(iso, cell.year, cell.month, cell.day);
                     const today = isSameDay(todayIso, cell.year, cell.month, cell.day);
                     return (
                       <button
-                        key={value + String(cell.current)}
+                        key={cellIso + String(cell.current)}
                         type="button"
                         onClick={() => pick(cell.year, cell.month, cell.day)}
                         className={`mx-auto flex size-9 items-center justify-center rounded-full text-sm font-semibold transition ${
                           selected
-                            ? "bg-yas-navy text-white"
+                            ? "bg-yas-navy text-white shadow-sm"
                             : today
                               ? "bg-yas-yellow text-yas-navy"
                               : cell.current
-                                ? "text-neutral-700 hover:bg-[#eef4ff] hover:text-yas-navy"
-                                : "text-neutral-300 hover:bg-neutral-50"
+                                ? "text-neutral-700 hover:bg-white hover:text-yas-navy hover:shadow-sm"
+                                : "text-neutral-300 hover:bg-white/70"
                         }`}
                       >
                         {cell.day}
@@ -300,14 +377,14 @@ export default function DateField({
                   })}
                 </div>
 
-                <div className="mt-3 flex items-center justify-between gap-2 border-t border-neutral-100 pt-3">
+                <div className="mt-3 flex items-center justify-between gap-2 border-t border-neutral-200/80 pt-3">
                   <button
                     type="button"
                     onClick={() => {
                       setDisplay("");
                       setOpen(false);
                     }}
-                    className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-neutral-500 hover:bg-neutral-50 hover:text-yas-navy"
+                    className="rounded-xl px-3 py-2 text-xs font-semibold text-neutral-500 transition hover:bg-white hover:text-yas-navy"
                   >
                     Effacer
                   </button>
@@ -317,7 +394,7 @@ export default function DateField({
                       const now = new Date();
                       pick(now.getFullYear(), now.getMonth(), now.getDate());
                     }}
-                    className="rounded-lg bg-yas-yellow px-3 py-1.5 text-xs font-bold text-yas-navy hover:bg-[#f0ce00]"
+                    className="rounded-xl bg-yas-yellow px-3.5 py-2 text-xs font-bold text-yas-navy shadow-sm transition hover:bg-[#f0ce00]"
                   >
                     Aujourd’hui
                   </button>

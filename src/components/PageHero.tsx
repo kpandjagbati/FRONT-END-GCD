@@ -14,6 +14,11 @@ export default function PageHero({ title, description, image, children }: Readon
         <h1 className="text-xl font-bold text-yas-navy sm:text-2xl">{title}</h1>
         <p className="mt-2 text-sm font-medium leading-relaxed text-neutral-600">{description}</p>
         <div className="mt-3 h-1.5 w-24 rounded-full bg-yas-yellow sm:mt-4" />
+        <img
+          src={image}
+          alt=""
+          className="mx-auto mt-4 block h-auto w-full max-w-[140px] object-contain sm:hidden"
+        />
       </div>
       <div className="hidden lg:block" />
       <img

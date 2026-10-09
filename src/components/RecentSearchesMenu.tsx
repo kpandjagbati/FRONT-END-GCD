@@ -136,7 +136,7 @@ export default function RecentSearchesMenu() {
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="recent-searches-title"
-                className="relative flex h-[min(96dvh,64rem)] w-full max-w-7xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-[0_28px_80px_rgba(1,55,125,0.22)] sm:rounded-3xl"
+                className="relative flex h-[min(92dvh,64rem)] w-full max-w-7xl flex-col overflow-hidden rounded-t-3xl bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_28px_80px_rgba(1,55,125,0.22)] sm:h-[min(96dvh,64rem)] sm:rounded-3xl sm:pb-0"
                 onClick={(event) => event.stopPropagation()}
               >
                 <div className="shrink-0 px-4 pb-0 pt-4 sm:px-6 sm:pt-6">
@@ -168,13 +168,13 @@ export default function RecentSearchesMenu() {
                         ref={tableScrollRef}
                         className="h-full overflow-auto rounded-xl border border-neutral-100"
                       >
-                        <table className="w-full min-w-[36rem] text-left text-sm">
-                          <thead className="sticky top-0 z-[1] bg-yas-navy text-xs uppercase tracking-wide text-white">
+                        <table className="w-full min-w-[32rem] text-left text-xs sm:min-w-[36rem] sm:text-sm">
+                          <thead className="sticky top-0 z-[1] bg-yas-navy text-[10px] uppercase tracking-wide text-white sm:text-xs">
                             <tr>
-                              <th className="px-4 py-3 font-semibold">Module</th>
-                              <th className="px-4 py-3 font-semibold">Critère</th>
-                              <th className="px-4 py-3 font-semibold">Valeur</th>
-                              <th className="px-4 py-3 font-semibold">Période</th>
+                              <th className="px-2.5 py-2.5 font-semibold sm:px-4 sm:py-3">Module</th>
+                              <th className="px-2.5 py-2.5 font-semibold sm:px-4 sm:py-3">Critère</th>
+                              <th className="px-2.5 py-2.5 font-semibold sm:px-4 sm:py-3">Valeur</th>
+                              <th className="px-2.5 py-2.5 font-semibold sm:px-4 sm:py-3">Période</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -186,18 +186,20 @@ export default function RecentSearchesMenu() {
                                   index % 2 === 0 ? "bg-white" : "bg-[#f8fafc]"
                                 } hover:bg-[#eef4ff]`}
                               >
-                                <td className="px-4 py-3 font-bold text-yas-navy">
+                                <td className="px-2.5 py-2.5 font-bold text-yas-navy sm:px-4 sm:py-3">
                                   {MODULES[item.module] ?? item.module}
                                 </td>
-                                <td className="px-4 py-3 font-medium text-neutral-600">
+                                <td className="px-2.5 py-2.5 font-medium text-neutral-600 sm:px-4 sm:py-3">
                                   {item.module === "appels"
                                     ? CRITERIA[item.payload.criteria] || "Numéro"
                                     : "—"}
                                 </td>
-                                <td className="px-4 py-3 font-bold text-yas-navy">
+                                <td className="px-2.5 py-2.5 font-bold text-yas-navy sm:px-4 sm:py-3">
                                   {searchedValue(item) || "—"}
                                 </td>
-                                <td className="px-4 py-3 font-medium text-neutral-600">{period(item)}</td>
+                                <td className="px-2.5 py-2.5 font-medium text-neutral-600 sm:px-4 sm:py-3">
+                                  {period(item)}
+                                </td>
                               </tr>
                             ))}
                           </tbody>

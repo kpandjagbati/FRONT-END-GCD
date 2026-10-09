@@ -37,15 +37,19 @@ export default function YasModal({
 
   return createPortal(
     <div
-      className="yas-modal-backdrop fixed inset-0 z-50 flex items-end justify-center bg-[#01377d]/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
+      className={`yas-modal-backdrop fixed inset-0 flex items-end justify-center bg-[#01377d]/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-4 ${
+        wide ? "z-[60]" : "z-50"
+      }`}
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="yas-modal-title"
-        className={`yas-modal-panel relative max-h-[92dvh] w-full min-w-0 overflow-y-auto rounded-t-3xl bg-white shadow-[0_28px_80px_rgba(1,55,125,0.22)] sm:rounded-3xl ${
-          wide ? "max-w-6xl" : "max-w-3xl"
+        className={`yas-modal-panel relative flex w-full min-w-0 flex-col overflow-hidden rounded-t-3xl bg-white shadow-[0_28px_80px_rgba(1,55,125,0.22)] sm:rounded-3xl ${
+          wide
+            ? "h-[min(92dvh,100%)] w-[min(100%,calc(100vw-2rem))] max-w-[90rem] sm:h-[min(90dvh,100%)]"
+            : "max-h-[min(96dvh,100%)] max-w-3xl overflow-y-auto overscroll-contain sm:max-h-[92dvh]"
         }`}
         onClick={(event) => event.stopPropagation()}
       >
@@ -57,12 +61,18 @@ export default function YasModal({
         >
           <IconClose className="size-5" />
         </button>
-        <div className="p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-6 md:p-8 sm:pb-8">
-          <h2 id="yas-modal-title" className="pr-10 text-lg font-bold text-yas-navy sm:text-xl">
+        <div
+          className={`flex min-h-0 flex-1 flex-col p-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-5 sm:pb-6 ${
+            wide ? "overflow-hidden" : "md:p-8 sm:pb-8"
+          }`}
+        >
+          <h2 id="yas-modal-title" className="shrink-0 pr-10 text-lg font-bold text-yas-navy sm:text-xl">
             {title}
           </h2>
-          <div className="mt-3 h-1.5 w-16 rounded-full bg-yas-yellow" />
-          <div className="mt-6">{children}</div>
+          <div className="mt-3 h-1.5 w-16 shrink-0 rounded-full bg-yas-yellow" />
+          <div className={`mt-6 min-h-0 ${wide ? "flex-1 overflow-auto overscroll-contain" : ""}`}>
+            {children}
+          </div>
         </div>
       </div>
     </div>,

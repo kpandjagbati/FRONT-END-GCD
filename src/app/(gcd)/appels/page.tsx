@@ -13,6 +13,8 @@ import DateField from "@/components/DateField";
 import { IconChip, IconClose, IconPhone, IconPhoneOutgoing, IconSim } from "@/components/icons";
 import YasDataTable, { type YasColumn } from "@/components/YasDataTable";
 import YasLoadingOverlay from "@/components/YasLoadingOverlay";
+import YasModal from "@/components/YasModal";
+import { EXPORT_TOAST, useYasToast, YasToast } from "@/components/YasToast";
 import { SearchAlert, EmptyResults } from "@/components/SearchFeedback";
 import { formatDateTime } from "@/lib/format-date";
 import { saveBlob } from "@/lib/downloads";
@@ -119,7 +121,7 @@ function SensBadge({ value }: Readonly<{ value: string }>) {
   const incoming = value === "E";
   return (
     <span
-      className={`inline-flex min-w-7 justify-center rounded-full px-2 py-0.5 text-[10px] font-bold ${
+      className={`inline-flex min-w-7 justify-center rounded-full px-2 py-0.5 text-[11px] font-bold ${
         incoming ? "bg-[#e8f6ee] text-[#1f7a46]" : "bg-[#eef4ff] text-yas-navy"
       }`}
     >
@@ -131,16 +133,17 @@ function SensBadge({ value }: Readonly<{ value: string }>) {
 const RESULT_COLUMNS: YasColumn<AppelRow>[] = [
   { key: "appelant", label: "Appelant", emphasis: true },
   { key: "appele", label: "Appelé", emphasis: true },
-  { key: "identiteAppelee", label: "Identite appelé", emphasis: true },
+  { key: "identiteAppelee", label: "Identité", emphasis: true },
   { key: "date", label: "Date", render: (row) => formatDateTime(row.date) },
   { key: "heure", label: "Heure" },
-  { key: "duree", label: "Duree", emphasis: true },
+  { key: "duree", label: "Durée", emphasis: true },
   {
     key: "type",
     label: "Type",
+    align: "center",
     render: (row) =>
       row.type ? (
-        <span className="inline-flex rounded-full bg-[#eef4ff] px-2 py-0.5 text-[10px] font-bold text-yas-navy">
+        <span className="inline-flex rounded-full bg-[#eef4ff] px-2 py-0.5 text-[11px] font-bold text-yas-navy">
           {row.type}
         </span>
       ) : (
@@ -150,6 +153,7 @@ const RESULT_COLUMNS: YasColumn<AppelRow>[] = [
   {
     key: "sens",
     label: "Sens",
+    align: "center",
     render: (row) => <SensBadge value={row.sens} />,
   },
   { key: "imsi", label: "IMSI" },
@@ -157,7 +161,7 @@ const RESULT_COLUMNS: YasColumn<AppelRow>[] = [
   {
     key: "localisation",
     label: "Localisation",
-    className: "max-w-[180px] whitespace-normal break-words",
+    className: "break-words align-top",
   },
 ];
 
@@ -167,6 +171,7 @@ export default function AppelsPage() {
   const [mailPending, setMailPending] = useState(false);
   const [mailInput, setMailInput] = useState("");
   const isClient = useIsClient();
+  const { toast, showToast, hideToast } = useYasToast();
   const [query, setQuery] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [exporting, setExporting] = useState<"pdf-red" | "pdf-navy" | "excel" | "word" | null>(null);
@@ -215,6 +220,11 @@ export default function AppelsPage() {
     setActiveId(null);
     resetMail();
     resetDates();
+    reset();
+  }
+
+  function closeResults() {
+    if (loading || exporting) return;
     reset();
   }
 
@@ -272,6 +282,8 @@ export default function AppelsPage() {
       return;
     }
     setFormError(null);
+    const notice = EXPORT_TOAST[target];
+    showToast(notice.title, notice.message);
     if (sendMail) setMailPending(true);
     setExporting(target);
     try {
@@ -333,6 +345,10 @@ export default function AppelsPage() {
         event.preventDefault();
         return;
       }
+      if (results) {
+        reset();
+        return;
+      }
       setActiveId(null);
       resetMail();
       resetDates();
@@ -346,11 +362,18 @@ export default function AppelsPage() {
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [active, exporting, loading, reset]);
+  }, [active, exporting, loading, reset, results]);
 
   return (
     <section className="my-auto w-full min-w-0 py-3 sm:py-6">
       <YasLoadingOverlay open={loading || Boolean(exporting)} />
+      <YasToast
+        open={Boolean(toast)}
+        title={toast?.title ?? ""}
+        message={toast?.message}
+        tone={toast?.tone}
+        onClose={hideToast}
+      />
       <div className="flex flex-col items-center gap-6 lg:flex-row lg:items-center lg:justify-center lg:gap-8">
         <div className="w-full max-w-xs shrink-0 lg:max-w-sm">
           <h1 className="text-xl font-bold text-yas-navy sm:text-2xl">Appels Détaillés</h1>
@@ -362,11 +385,11 @@ export default function AppelsPage() {
           <img
             src="/illustrations/appels-hero.svg"
             alt=""
-            className="mt-4 hidden h-auto w-full object-contain sm:block sm:mt-6"
+            className="mx-auto mt-4 h-auto w-full max-w-[140px] object-contain sm:mt-6 sm:max-w-none"
           />
         </div>
 
-        <div className="grid w-full max-w-xl grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid w-full max-w-xl grid-cols-2 gap-2.5 sm:gap-3">
           {CRITERIA.map((item) => {
             const Icon = item.icon;
             return (
@@ -376,14 +399,14 @@ export default function AppelsPage() {
                 onClick={() => openCard(item.id)}
                 className="flex flex-col overflow-hidden rounded-2xl bg-white text-left shadow-[0_12px_32px_rgba(1,55,125,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(1,55,125,0.12)]"
               >
-                <span className="flex items-center justify-center px-3 pt-6 sm:pt-7">
-                  <span className="grid size-16 place-items-center rounded-2xl bg-[#eef4ff] text-yas-navy">
-                    <Icon className="size-8" />
+                <span className="flex items-center justify-center px-2 pt-4 sm:px-3 sm:pt-7">
+                  <span className="grid size-12 place-items-center rounded-2xl bg-[#eef4ff] text-yas-navy sm:size-16">
+                    <Icon className="size-6 sm:size-8" />
                   </span>
                 </span>
-                <span className="flex flex-1 flex-col p-4 sm:p-5">
-                  <span className="font-bold text-yas-navy">{item.title}</span>
-                  <span className="mt-1 text-sm text-neutral-500">{item.desc}</span>
+                <span className="flex flex-1 flex-col p-3 sm:p-5">
+                  <span className="text-sm font-bold text-yas-navy sm:text-base">{item.title}</span>
+                  <span className="mt-1 hidden text-sm text-neutral-500 sm:block">{item.desc}</span>
                 </span>
               </button>
             );
@@ -401,9 +424,7 @@ export default function AppelsPage() {
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="appels-modal-title"
-                className={`yas-modal-panel relative max-h-[92dvh] w-full min-w-0 overflow-y-auto rounded-t-3xl bg-white shadow-[0_28px_80px_rgba(1,55,125,0.22)] sm:rounded-3xl ${
-                  results ? "max-w-6xl" : "max-w-3xl"
-                }`}
+                className="yas-modal-panel relative max-h-[min(96dvh,100%)] w-full min-w-0 max-w-3xl overflow-y-auto overscroll-contain rounded-t-3xl bg-white shadow-[0_28px_80px_rgba(1,55,125,0.22)] sm:max-h-[92dvh] sm:rounded-3xl"
                 onClick={(event) => event.stopPropagation()}
               >
                 <button
@@ -415,19 +436,18 @@ export default function AppelsPage() {
                   <IconClose className="size-5" />
                 </button>
 
-                <div
-                  className={`yas-illustration-well flex items-center justify-center bg-[#eef4ff] px-4 sm:px-8 ${
-                    results ? "h-16 sm:h-28" : "h-24 sm:h-44"
-                  }`}
-                >
+                <div className="yas-illustration-well flex h-24 shrink-0 items-center justify-center bg-[#eef4ff] px-4 sm:h-44 sm:px-8">
                   <img
                     src={active.image}
                     alt=""
-                    className={`yas-illustration w-auto max-w-full object-contain ${results ? "h-16 sm:h-24" : "h-28 sm:h-40"}`}
+                    className="yas-illustration h-28 w-auto max-w-full object-contain sm:h-40"
                   />
                 </div>
 
-                <form className="yas-bubbles p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-8" onSubmit={(event) => event.preventDefault()}>
+                <form
+                  className="yas-bubbles p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-6 lg:p-8"
+                  onSubmit={(event) => event.preventDefault()}
+                >
                   <h2 id="appels-modal-title" className="pr-10 text-lg font-bold text-yas-navy sm:text-xl">
                     {active.title}
                   </h2>
@@ -500,59 +520,81 @@ export default function AppelsPage() {
                     message={exporting ? "Génération du fichier en cours…" : formError || error}
                   />
 
-                  <div className="mt-8 flex flex-wrap justify-center gap-2 sm:gap-4">
+                  <div className="mt-6 flex flex-wrap justify-center gap-2 sm:mt-8 sm:gap-4">
                     <VoirButton onClick={handleVoir} />
-                    <PdfRedButton disabled={Boolean(exporting)} onClick={() => void handleGenerate("pdf-red")} />
-                    <PdfNavyButton disabled={Boolean(exporting)} onClick={() => void handleGenerate("pdf-navy")} />
-                    <ExcelButton disabled={Boolean(exporting)} onClick={() => void handleGenerate("excel")} />
-                    <WordButton disabled={Boolean(exporting)} onClick={() => void handleGenerate("word")} />
+                    <PdfRedButton
+                      disabled={Boolean(exporting)}
+                      onClick={() => void handleGenerate("pdf-red")}
+                    />
+                    <PdfNavyButton
+                      disabled={Boolean(exporting)}
+                      onClick={() => void handleGenerate("pdf-navy")}
+                    />
+                    <ExcelButton
+                      disabled={Boolean(exporting)}
+                      onClick={() => void handleGenerate("excel")}
+                    />
+                    <WordButton
+                      disabled={Boolean(exporting)}
+                      onClick={() => void handleGenerate("word")}
+                    />
                   </div>
-
-                  {results ? (
-                    <div className="mt-8 space-y-4">
-                      <div className="rounded-2xl border border-neutral-100 bg-[#f7f9fc] px-4 py-4 sm:px-5">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-bold text-yas-navy">Résultats des appels</p>
-                            <p className="mt-0.5 text-xs font-medium text-neutral-500">
-                              {results.length} ligne{results.length > 1 ? "s" : ""}
-                            </p>
-                          </div>
-                          <div className="flex flex-wrap gap-2 text-[11px] font-semibold">
-                            <span className="rounded-full bg-white px-2.5 py-1 text-neutral-600 shadow-sm">
-                              E · Appel reçu
-                            </span>
-                            <span className="rounded-full bg-white px-2.5 py-1 text-neutral-600 shadow-sm">
-                              S · Appel sortant
-                            </span>
-                          </div>
-                        </div>
-                        <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
-                          <div>
-                            <dt className="font-semibold text-neutral-400">Abonné</dt>
-                            <dd className="mt-0.5 font-bold text-neutral-800">{searchedValue || "—"}</dd>
-                          </div>
-                          <div>
-                            <dt className="font-semibold text-neutral-400">Période</dt>
-                            <dd className="mt-0.5 font-medium text-neutral-700">
-                              {formatDateTime(searchPeriod?.debut)} → {formatDateTime(searchPeriod?.fin)}
-                            </dd>
-                          </div>
-                        </dl>
-                      </div>
-                      {results.length === 0 ? (
-                        <EmptyResults message="Aucun appel pour cette recherche." />
-                      ) : (
-                        <YasDataTable columns={RESULT_COLUMNS} rows={results} embedded compact />
-                      )}
-                    </div>
-                  ) : null}
                 </form>
               </div>
             </div>,
             document.body,
           )
         : null}
+
+      <YasModal
+        open={Boolean(results)}
+        title="Résultats des appels"
+        onClose={closeResults}
+        wide
+      >
+        {results ? (
+          <div className="flex min-h-0 flex-1 flex-col gap-4">
+            <div className="shrink-0 rounded-2xl border border-neutral-100 bg-[#f7f9fc] px-4 py-4 sm:px-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold text-yas-navy">
+                    {results.length} ligne{results.length > 1 ? "s" : ""} trouvée
+                    {results.length > 1 ? "s" : ""}
+                  </p>
+                  <p className="mt-0.5 text-xs font-medium text-neutral-500">
+                    {active?.title ?? "Appels"} · {searchedValue || "—"}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2 text-[11px] font-semibold">
+                  <span className="rounded-full bg-white px-2.5 py-1 text-neutral-600 shadow-sm">
+                    E · Appel reçu
+                  </span>
+                  <span className="rounded-full bg-white px-2.5 py-1 text-neutral-600 shadow-sm">
+                    S · Appel sortant
+                  </span>
+                </div>
+              </div>
+              <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                <div>
+                  <dt className="font-semibold text-neutral-400">Abonné</dt>
+                  <dd className="mt-0.5 font-bold text-neutral-800">{searchedValue || "—"}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-neutral-400">Période</dt>
+                  <dd className="mt-0.5 font-medium text-neutral-700">
+                    {formatDateTime(searchPeriod?.debut)} → {formatDateTime(searchPeriod?.fin)}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+            {results.length === 0 ? (
+              <EmptyResults message="Aucun appel pour cette recherche." />
+            ) : (
+              <YasDataTable columns={RESULT_COLUMNS} rows={results} embedded fit />
+            )}
+          </div>
+        ) : null}
+      </YasModal>
 
       {isClient && mailPending
         ? createPortal(

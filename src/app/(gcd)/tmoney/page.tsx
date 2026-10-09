@@ -9,6 +9,7 @@ import { EmptyResults, SearchAlert } from "@/components/SearchFeedback";
 import YasDataTable, { type YasColumn } from "@/components/YasDataTable";
 import YasLoadingOverlay from "@/components/YasLoadingOverlay";
 import YasModal from "@/components/YasModal";
+import { EXPORT_TOAST, useYasToast, YasToast } from "@/components/YasToast";
 import { formatDateTime } from "@/lib/format-date";
 import { saveBlob } from "@/lib/downloads";
 import { asRecords, downloadFile, field, generateTmoneyFile, generatedFileName, searchTmoney } from "@/lib/gcd-api";
@@ -47,6 +48,7 @@ export default function TmoneyPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [exporting, setExporting] = useState<"pdf-red" | "pdf-gray" | null>(null);
   const [replay, setReplay] = useState(false);
+  const { toast, showToast, hideToast } = useYasToast();
   const loadMixx = useCallback(
     () =>
       searchTmoney(numero, dateDebut, dateFin).then((data) => asRecords(data).map(toMixxRow)),
@@ -96,7 +98,10 @@ export default function TmoneyPage() {
       return;
     }
     setFormError(null);
-    setExporting(secureFile ? "pdf-red" : "pdf-gray");
+    const target = secureFile ? "pdf-red" : "pdf-gray";
+    const notice = EXPORT_TOAST[target];
+    showToast(notice.title, notice.message);
+    setExporting(target);
     try {
       const body = {
         searchValue: numero.trim(),
@@ -121,6 +126,13 @@ export default function TmoneyPage() {
   return (
     <section className="my-auto w-full min-w-0 py-3 sm:py-6">
       <YasLoadingOverlay open={loading || Boolean(exporting)} />
+      <YasToast
+        open={Boolean(toast)}
+        title={toast?.title ?? ""}
+        message={toast?.message}
+        tone={toast?.tone}
+        onClose={hideToast}
+      />
       <PageHero
         title="Mixx by Yas"
         description="Rechercher une transaction par numéro et période."

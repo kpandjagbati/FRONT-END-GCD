@@ -242,3 +242,90 @@ export function IconCalendar({ className }: Readonly<IconProps>) {
     </svg>
   );
 }
+
+/** Adobe-style PDF mark (readable on colored buttons). */
+export function IconPdf({ className }: Readonly<IconProps>) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M7 2.75h7.2L19.25 8v13.25A1 1 0 0 1 18.25 22.25H7A1 1 0 0 1 6 21.25V3.75A1 1 0 0 1 7 2.75z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path d="M14.1 2.9V7.4c0 .5.4.9.9.9h4.4" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <path
+        d="M8.2 16.1V11h1.15c1.05 0 1.7.55 1.7 1.4 0 .82-.62 1.38-1.55 1.38H9.05v2.32H8.2zm.85-3.05h.28c.48 0 .78-.24.78-.65s-.3-.66-.78-.66h-.28v1.31zM12.35 16.1l1.05-5.1h1.05l.72 3.55.72-3.55h1.02l1.05 5.1h-.95l-.55-3.12-.58 3.12h-.93l-.58-3.12-.55 3.12h-.92z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+/** PDF + lock for secured export. */
+export function IconPdfLock({ className }: Readonly<IconProps>) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M6.5 2.75h6.4L17.25 7.2v9.05a1 1 0 0 1-1 1H6.5a1 1 0 0 1-1-1V3.75a1 1 0 0 1 1-1z"
+        stroke="currentColor"
+        strokeWidth="1.55"
+        strokeLinejoin="round"
+      />
+      <path d="M12.8 2.9V6.7c0 .45.36.8.8.8h3.7" stroke="currentColor" strokeWidth="1.55" strokeLinejoin="round" />
+      <path
+        d="M7.55 14.35V10.2h.95c.88 0 1.42.46 1.42 1.18 0 .68-.5 1.15-1.28 1.15H8.3v1.82H7.55zm.75-2.55h.22c.4 0 .64-.2.64-.52s-.24-.53-.64-.53h-.22v1.05z"
+        fill="currentColor"
+      />
+      <rect x="15.1" y="15.35" width="5.4" height="4.35" rx="0.85" stroke="currentColor" strokeWidth="1.45" />
+      <path
+        d="M16.35 15.35v-1.15a1.55 1.55 0 0 1 3.1 0v1.15"
+        stroke="currentColor"
+        strokeWidth="1.45"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/** Microsoft Excel-style mark. */
+export function IconExcel({ className }: Readonly<IconProps>) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M13.5 3H8a1 1 0 0 0-1 1v3.5H4.75A.75.75 0 0 0 4 8.25v11A.75.75 0 0 0 4.75 20H13a1 1 0 0 0 1-1v-3.5h4.25a.75.75 0 0 0 .75-.75V8.5L13.5 3z"
+        stroke="currentColor"
+        strokeWidth="1.55"
+        strokeLinejoin="round"
+      />
+      <path d="M13.5 3.2V7.5c0 .55.45 1 1 1h4.2" stroke="currentColor" strokeWidth="1.55" strokeLinejoin="round" />
+      <rect x="4" y="8.25" width="10" height="11.75" rx="0.75" fill="currentColor" opacity="0.95" />
+      <path
+        d="M6.35 11.05 8.2 14.05l-1.85 3h1.4l1.1-2 .1-.18.1.18 1.1 2h1.4l-1.85-3 1.85-3h-1.4l-1.1 2-.1.18-.1-.18-1.1-2h-1.4z"
+        fill="#217346"
+      />
+      <path d="M15.2 10.6h4.3M15.2 13.2h4.3M15.2 15.8h3" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Microsoft Word-style mark. */
+export function IconWord({ className }: Readonly<IconProps>) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M13.5 3H8a1 1 0 0 0-1 1v3.5H4.75A.75.75 0 0 0 4 8.25v11A.75.75 0 0 0 4.75 20H13a1 1 0 0 0 1-1v-3.5h4.25a.75.75 0 0 0 .75-.75V8.5L13.5 3z"
+        stroke="currentColor"
+        strokeWidth="1.55"
+        strokeLinejoin="round"
+      />
+      <path d="M13.5 3.2V7.5c0 .55.45 1 1 1h4.2" stroke="currentColor" strokeWidth="1.55" strokeLinejoin="round" />
+      <rect x="4" y="8.25" width="10" height="11.75" rx="0.75" fill="currentColor" opacity="0.95" />
+      <path
+        d="M5.55 17.05 6.85 11.1h1.35l.9 4.15.9-4.15h1.35l1.3 5.95h-1.3l-.7-3.7-.9 3.7H8.35l-.9-3.7-.7 3.7H5.55z"
+        fill="#2b579a"
+      />
+      <path d="M15.2 10.6h4.3M15.2 13h4.3M15.2 15.4h3" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
+    </svg>
+  );
+}
