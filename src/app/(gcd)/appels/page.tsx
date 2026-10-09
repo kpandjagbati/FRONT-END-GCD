@@ -282,7 +282,7 @@ export default function AppelsPage() {
     }
     setFormError(null);
     const notice = EXPORT_TOAST[target];
-    showToast(notice.title, notice.message);
+    showToast(notice.title, notice.message, notice.tone);
     if (sendMail) setMailPending(true);
     setExporting(target);
     try {

@@ -100,7 +100,7 @@ export default function TmoneyPage() {
     setFormError(null);
     const target = secureFile ? "pdf-red" : "pdf-gray";
     const notice = EXPORT_TOAST[target];
-    showToast(notice.title, notice.message);
+    showToast(notice.title, notice.message, notice.tone);
     setExporting(target);
     try {
       const body = {

@@ -154,7 +154,7 @@ export default function IdentitePage() {
     setFormError(null);
     const target = secureFile ? "pdf-red" : "pdf-gray";
     const notice = EXPORT_TOAST[target];
-    showToast(notice.title, notice.message);
+    showToast(notice.title, notice.message, notice.tone);
     setExporting(target);
     try {
       const body = { lastName: nom.trim(), firstName: prenoms.trim(), ...(secureFile ? { secureFile: true } : {}) };
