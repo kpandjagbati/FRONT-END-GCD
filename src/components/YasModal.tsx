@@ -38,7 +38,7 @@ export default function YasModal({
   return createPortal(
     <div
       className={`yas-modal-backdrop fixed inset-0 flex items-end justify-center bg-[#01377d]/40 p-0 backdrop-blur-[2px] sm:items-center ${
-        wide ? "z-[60] sm:p-5 lg:p-6 xl:p-8" : "z-50 sm:p-4"
+        wide ? "z-[60] sm:p-4 lg:p-5 xl:p-6" : "z-50 sm:p-4"
       }`}
       onClick={onClose}
     >
@@ -48,7 +48,7 @@ export default function YasModal({
         aria-labelledby="yas-modal-title"
         className={`yas-modal-panel relative flex w-full min-w-0 flex-col overflow-hidden rounded-t-3xl bg-white shadow-[0_28px_80px_rgba(1,55,125,0.22)] sm:rounded-3xl ${
           wide
-            ? "h-[min(90dvh,100%)] max-w-7xl sm:h-[min(88dvh,100%)] lg:max-w-[82rem]"
+            ? "h-[min(90dvh,100%)] max-w-7xl sm:h-[min(88dvh,100%)] lg:max-w-[88rem]"
             : "max-h-[min(96dvh,100%)] max-w-3xl overflow-y-auto overscroll-contain sm:max-h-[92dvh]"
         }`}
         onClick={(event) => event.stopPropagation()}
