@@ -161,7 +161,6 @@ const RESULT_COLUMNS: YasColumn<AppelRow>[] = [
   {
     key: "localisation",
     label: "Localisation",
-    className: "break-words align-top",
   },
 ];
 

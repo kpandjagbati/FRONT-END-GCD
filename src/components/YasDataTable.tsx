@@ -53,7 +53,7 @@ export default function YasDataTable<T extends { id: string }>({
   const visible = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const tight = compact || fit;
   const cellPad = fit
-    ? "px-1.5 py-2 sm:px-2 sm:py-2.5"
+    ? "px-1.5 py-2 sm:px-2"
     : tight
       ? "px-2.5 py-2 sm:px-3 sm:py-2.5"
       : "px-3 py-3 sm:px-5 sm:py-3.5";
@@ -116,7 +116,7 @@ export default function YasDataTable<T extends { id: string }>({
         <table
           className={`w-full text-left ${
             fit
-              ? "table-fixed text-xs sm:text-sm"
+              ? "table-fixed text-[11px] sm:text-xs"
               : tight
                 ? "min-w-full text-[11px] sm:text-xs"
                 : "min-w-full text-xs sm:text-sm"
@@ -127,9 +127,10 @@ export default function YasDataTable<T extends { id: string }>({
               {columns.map((column) => (
                 <th
                   key={column.key}
+                  title={column.label}
                   className={`font-semibold uppercase tracking-wide text-white/90 ${
                     fit
-                      ? "break-words px-1.5 py-2.5 text-[10px] leading-snug sm:px-2 sm:text-[11px]"
+                      ? "truncate px-1.5 py-2 text-[9px] sm:px-2 sm:text-[10px]"
                       : tight
                         ? "whitespace-nowrap px-2.5 py-2 text-[9px] sm:px-3 sm:py-2.5 sm:text-[10px]"
                         : "whitespace-nowrap px-3 py-2.5 text-[10px] sm:px-5 sm:py-3 sm:text-[11px]"
@@ -164,11 +165,14 @@ export default function YasDataTable<T extends { id: string }>({
                   {columns.map((column) => {
                     const raw = String(row[column.key] ?? "").trim();
                     const emphasis = column.emphasis ?? false;
+                    const content = column.render ? column.render(row) : raw || "—";
                     return (
                       <td
                         key={column.key}
+                        title={typeof content === "string" || typeof content === "number" ? String(content) : raw || undefined}
                         className={`${cellPad} ${
-                          column.className ?? (fit ? "break-all align-top" : "whitespace-nowrap")
+                          column.className ??
+                          (fit ? "truncate whitespace-nowrap" : "whitespace-nowrap")
                         } ${
                           emphasis
                             ? "font-bold text-yas-navy"
@@ -181,7 +185,7 @@ export default function YasDataTable<T extends { id: string }>({
                               : "text-left"
                         }`}
                       >
-                        {column.render ? column.render(row) : raw || "—"}
+                        {content}
                       </td>
                     );
                   })}

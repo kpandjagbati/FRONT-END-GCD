@@ -48,7 +48,7 @@ export default function YasModal({
         aria-labelledby="yas-modal-title"
         className={`yas-modal-panel relative flex w-full min-w-0 flex-col overflow-hidden rounded-t-3xl bg-white shadow-[0_28px_80px_rgba(1,55,125,0.22)] sm:rounded-3xl ${
           wide
-            ? "h-[min(92dvh,100%)] w-[min(100%,calc(100vw-2rem))] max-w-[90rem] sm:h-[min(90dvh,100%)]"
+            ? "h-[min(92dvh,100%)] max-w-[84rem] sm:h-[min(90dvh,100%)]"
             : "max-h-[min(96dvh,100%)] max-w-3xl overflow-y-auto overscroll-contain sm:max-h-[92dvh]"
         }`}
         onClick={(event) => event.stopPropagation()}
