@@ -1,9 +1,11 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import { useIsClient } from "@/lib/use-client";
 
 export default function YasLoadingOverlay({ open }: { open: boolean }) {
-  if (!open) return null;
+  const isClient = useIsClient();
+  if (!open || !isClient) return null;
 
   return createPortal(
     <div

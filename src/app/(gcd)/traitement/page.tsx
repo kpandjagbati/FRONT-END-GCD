@@ -1,12 +1,28 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { IconChevronsDown, IconChevronsUp, IconClose, IconFile, IconWarning } from "@/components/icons";
+import {
+  IconChevronsDown,
+  IconChevronsUp,
+  IconClose,
+  IconFile,
+  IconHistory,
+  IconWarning,
+} from "@/components/icons";
 import { ExcelButton, PdfRedButton, WordButton } from "@/components/ActionButtons";
 import YasLoadingOverlay from "@/components/YasLoadingOverlay";
 import { saveBlob } from "@/lib/downloads";
+import {
+  isDownloadReady,
+  jobsFromBulk,
+  statusClassName,
+  statusLabel,
+  typeLabel,
+  type TreatmentJob,
+} from "@/lib/bulk-treatment";
 import {
   bulkSearch,
   clearBulkZipCache,
@@ -15,12 +31,11 @@ import {
   extractBulkJobId,
   getBulkSearch,
   isBulkSearchComplete,
-  parseBulkSearchItems,
   readPasswordFromBlob,
   type BulkOutputType,
-  type BulkSearchItemStatus,
 } from "@/lib/gcd-api";
 import { frenchDateToIso } from "@/lib/format-date";
+import { rememberBulkJob } from "@/lib/recent-bulk-jobs";
 import { useIsClient } from "@/lib/use-client";
 
 const OUTPUT_OPTIONS: { value: BulkOutputType; label: string }[] = [
@@ -53,18 +68,6 @@ function isCsv(file: File) {
   return name.endsWith(".csv") || file.type === "text/csv";
 }
 
-type TreatmentJob = {
-  id: string;
-  itemId: string;
-  type: string;
-  valeur: string;
-  dateDebut: string;
-  dateFin: string;
-  status: BulkSearchItemStatus;
-  fileName?: string;
-  passwordFileName?: string;
-};
-
 const PREVIEW_JOBS: TreatmentJob[] = Array.from({ length: 24 }, (_, index) => {
   const row = CSV_ROWS[index % CSV_ROWS.length];
   return {
@@ -78,36 +81,6 @@ const PREVIEW_JOBS: TreatmentJob[] = Array.from({ length: 24 }, (_, index) => {
     fileName: `apercu-${index + 1}.pdf`,
   };
 });
-
-const TYPE_LABELS: Record<string, string> = {
-  msisdn: "MSISDN",
-  imei: "IMEI",
-  imsi: "IMSI",
-};
-
-function typeLabel(type: string) {
-  return TYPE_LABELS[type.toLowerCase()] ?? type.toUpperCase();
-}
-
-function statusLabel(status: BulkSearchItemStatus) {
-  if (status === "waiting") return "En attente";
-  if (status === "pending") return "En cours";
-  if (status === "ready") return "Terminé";
-  if (status === "partial") return "Terminé avec erreurs";
-  return "Échoué";
-}
-
-function statusClassName(status: BulkSearchItemStatus) {
-  if (status === "ready") return "text-[#1f7a46]";
-  if (status === "partial") return "text-amber-700";
-  if (status === "error") return "text-red-500";
-  if (status === "waiting") return "text-neutral-500";
-  return "text-amber-600";
-}
-
-function isDownloadReady(status: BulkSearchItemStatus) {
-  return status === "ready" || status === "partial";
-}
 
 function csvDelimiter(headerLine: string) {
   return headerLine.includes(";") && headerLine.split(";").length >= headerLine.split(",").length ? ";" : ",";
@@ -173,50 +146,6 @@ function rowsFromCsv(text: string): TreatmentJob[] {
   });
 }
 
-const STATUS_RANK: Record<BulkSearchItemStatus, number> = {
-  waiting: 0,
-  pending: 1,
-  ready: 2,
-  partial: 2,
-  error: 2,
-};
-
-/** Évite le scintillement En attente ↔ En cours ↔ Terminé entre deux polls. */
-function mergeStatus(previous: BulkSearchItemStatus | undefined, next: BulkSearchItemStatus) {
-  if (!previous) return next;
-  if (next === "ready" || next === "partial" || next === "error") return next;
-  if (previous === "ready" || previous === "partial" || previous === "error") return previous;
-  if (STATUS_RANK[next] < STATUS_RANK[previous]) return previous;
-  return next;
-}
-
-function jobsFromBulk(
-  data: unknown,
-  fallback: TreatmentJob[],
-  previous: TreatmentJob[] = [],
-): TreatmentJob[] {
-  const items = parseBulkSearchItems(data);
-  // Réponse sans items : garder l'état actuel (ne pas revenir à « En attente »).
-  if (items.length === 0) return previous.length > 0 ? previous : fallback;
-  return items.map((item, index) => {
-    const base = fallback[index] || previous[index];
-    const prev =
-      previous.find((job) => job.itemId && job.itemId === item.itemId) || previous[index] || base;
-    const fileName = item.fileName || prev?.fileName || base?.fileName;
-    return {
-      id: `item-${item.itemId}`,
-      itemId: item.itemId,
-      type: item.type || prev?.type || base?.type || "",
-      valeur: item.valeur || prev?.valeur || base?.valeur || "",
-      dateDebut: item.dateDebut || prev?.dateDebut || base?.dateDebut || "",
-      dateFin: item.dateFin || prev?.dateFin || base?.dateFin || "",
-      status: mergeStatus(prev?.status, item.status),
-      fileName,
-      passwordFileName: item.passwordFileName || prev?.passwordFileName || base?.passwordFileName,
-    };
-  });
-}
-
 async function waitForBulkSearch(jobId: string, onUpdate: (data: unknown) => void) {
   // ~12 min : une recherche masse (3 lignes) peut prendre 4–5 min côté API Yas.
   const maxAttempts = 240;
@@ -253,6 +182,8 @@ export default function TraitementPage() {
   const [outputType, setOutputType] = useState<BulkOutputType>("pdf");
   const inputRef = useRef<HTMLInputElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
+  /** Job affiché dans le panneau résultat (d'autres jobs peuvent tourner en parallèle). */
+  const viewingJobIdRef = useRef<string | null>(null);
   const isClient = useIsClient();
 
   useEffect(() => {
@@ -291,11 +222,7 @@ export default function TraitementPage() {
       return;
     }
     setError(null);
-    setJobs([]);
-    setBulkJobId(null);
-    setStarted(false);
-    setPreviewOpen(false);
-    setListPage(1);
+    // Ne pas annuler un traitement déjà lancé : on peut en démarrer un autre en parallèle.
     setFile(next);
   }
 
@@ -304,6 +231,7 @@ export default function TraitementPage() {
     setLoading(true);
     setNotice(false);
     setError(null);
+    const sourceName = file.name;
     try {
       const originalText = await file.text();
       const uploadText = normalizeCsvForUpload(originalText);
@@ -311,34 +239,55 @@ export default function TraitementPage() {
       if (rows.length === 0) {
         throw new Error("Le CSV ne contient aucune ligne valide (colonnes type, valeur, dates).");
       }
-      setJobs(rows);
-      setStarted(true);
-      setListPage(1);
-      setBulkJobId(null);
-      const uploadFile = new File([uploadText], file.name, { type: "text/csv" });
+      const uploadFile = new File([uploadText], sourceName, { type: "text/csv" });
       const created = await bulkSearch(uploadFile, outputType);
       const jobId = extractBulkJobId(created);
       if (!jobId) {
-        // Certains backends renvoient déjà le détail dans la création.
         const immediate = jobsFromBulk(created, rows);
         if (immediate.some((job) => isDownloadReady(job.status))) {
+          viewingJobIdRef.current = "immediate";
+          setBulkJobId(null);
           setJobs(immediate);
+          setStarted(true);
           setNotice(true);
+          setPreviewOpen(true);
+          setFile(null);
           return;
         }
         throw new Error("Le serveur n'a pas renvoyé l'identifiant du traitement.");
       }
-      clearBulkZipCache();
+
+      rememberBulkJob({
+        jobId,
+        fileName: sourceName,
+        outputType,
+        createdAt: new Date().toISOString(),
+      });
+      clearBulkZipCache(jobId);
+      viewingJobIdRef.current = jobId;
       setBulkJobId(jobId);
+      setJobs(rows);
+      setStarted(true);
+      setListPage(1);
       setNotice(true);
       setPreviewOpen(true);
-      // L'upload est accepté : on laisse voir la progression pendant le polling.
+      // Formulaire libre : un autre CSV peut être lancé sans attendre la fin du polling.
+      setFile(null);
       setLoading(false);
-      const finalData = await waitForBulkSearch(jobId, (data) => {
+
+      void waitForBulkSearch(jobId, (data) => {
+        if (viewingJobIdRef.current !== jobId) return;
         setJobs((prev) => jobsFromBulk(data, rows, prev));
-      });
-      setJobs((prev) => jobsFromBulk(finalData, rows, prev));
-      setPreviewOpen(true);
+      })
+        .then((finalData) => {
+          if (viewingJobIdRef.current !== jobId) return;
+          setJobs((prev) => jobsFromBulk(finalData, rows, prev));
+          setPreviewOpen(true);
+        })
+        .catch((cause) => {
+          if (viewingJobIdRef.current !== jobId) return;
+          setError(cause instanceof Error ? cause.message : "Le traitement n'a pas abouti.");
+        });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Le traitement n'a pas abouti.");
     } finally {
@@ -680,6 +629,15 @@ export default function TraitementPage() {
             >
               Procéder au traitement
             </button>
+            <Link
+              href="/traitement/historique"
+              title="Traitements récents"
+              aria-label="Traitements récents"
+              className="inline-flex h-10 min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-yas-navy/15 bg-white px-4 text-sm font-semibold text-yas-navy transition hover:border-yas-navy/30 hover:bg-[#eef4ff] sm:w-auto sm:px-3"
+            >
+              <IconHistory className="size-5 shrink-0" />
+              <span className="sm:sr-only">Traitements récents</span>
+            </Link>
           </div>
         </div>
       </div>
@@ -900,7 +858,9 @@ export default function TraitementPage() {
                   <IconClose className="size-4" />
                 </button>
                 <p className="pr-8 font-bold">Fichier bien chargé !</p>
-                <p className="mt-1.5 font-medium leading-relaxed">Traitement en cours</p>
+                <p className="mt-1.5 font-medium leading-relaxed">
+                  Traitement en cours — vous pouvez en lancer un autre.
+                </p>
               </div>
             </aside>,
             document.body,

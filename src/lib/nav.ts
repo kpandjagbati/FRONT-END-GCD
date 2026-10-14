@@ -15,5 +15,15 @@ export const BREADCRUMBS: Record<string, { label: string; href: string }> = {
   "/identification": { label: "Identités", href: "/identite" },
   "/tmoney": { label: "Transactions Mixx by Yas", href: "/tmoney" },
   "/traitement": { label: "Traitement en masse", href: "/traitement" },
+  "/traitement/historique": { label: "Traitements récents", href: "/traitement/historique" },
   "/ftth-login": { label: "FTTH-login", href: "/ftth-login" },
 };
+
+/** Résout le fil d’Ariane, y compris les routes dynamiques (détail historique). */
+export function resolveBreadcrumb(pathname: string) {
+  if (BREADCRUMBS[pathname]) return BREADCRUMBS[pathname];
+  if (pathname.startsWith("/traitement/historique/")) {
+    return { label: "Détail du traitement", href: pathname };
+  }
+  return undefined;
+}

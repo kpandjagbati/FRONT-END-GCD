@@ -460,6 +460,102 @@ export function getBulkSearch(jobId: string) {
   return gcdFetch<unknown>(`/get-calls-details/bulk-search/v2/${id}`);
 }
 
+/**
+ * Liste des traitements récents de l'utilisateur connecté.
+ * Endpoint provisoire — Arif confirmera le path exact.
+ * Attendu : GET → tableau { id|jobId|reference, status, outputType?, fileName?, createdAt?, itemCount? }
+ */
+export function listRecentBulkSearches() {
+  return gcdFetch<unknown>("/get-calls-details/bulk-search/v2/history");
+}
+
+export type RecentBulkSearch = {
+  jobId: string;
+  status: BulkSearchItemStatus;
+  statusLabel: string;
+  outputType: BulkOutputType;
+  fileName: string;
+  createdAt: string;
+  itemCount: number | null;
+};
+
+function asBulkOutputType(raw: string): BulkOutputType {
+  const value = raw.trim().toLowerCase();
+  if (value === "excel" || value === "xlsx" || value === "xls") return "excel";
+  if (value === "word" || value === "docx" || value === "doc") return "word";
+  return "pdf";
+}
+
+/** Parse la réponse liste historique (forme flexible tant que l'API n'est pas figée). */
+export function parseRecentBulkSearches(data: unknown): RecentBulkSearch[] {
+  const rows = (() => {
+    if (Array.isArray(data)) return objectRows(data);
+    if (!data || typeof data !== "object") return [];
+    const record = data as Record<string, unknown>;
+    for (const key of ["items", "results", "jobs", "history", "data", "content"]) {
+      const value = record[key];
+      if (Array.isArray(value) && value.length > 0) {
+        const nested = objectRows(value);
+        if (nested.length > 0) return nested;
+      }
+    }
+    return asRecords(data);
+  })();
+
+  return rows.flatMap((row) => {
+    const jobId =
+      field(row, ["jobId", "id", "reference", "bulkSearchId", "bulkId", "uuid", "requestId"]) ||
+      extractBulkJobId(row);
+    if (!jobId) return [];
+    const statusRaw = field(row, ["status", "state", "jobStatus", "processingStatus"]);
+    const status = bulkItemStatus(statusRaw || "COMPLETED");
+    const createdAt = field(row, [
+      "createdAt",
+      "created_at",
+      "date",
+      "submittedAt",
+      "startedAt",
+      "updatedAt",
+    ]);
+    const fileName = field(row, ["fileName", "filename", "originalFileName", "csvFileName", "name"]);
+    const countRaw = field(row, ["itemCount", "itemsCount", "totalItems", "count", "size"]);
+    const itemCount = countRaw && Number.isFinite(Number(countRaw)) ? Number(countRaw) : null;
+    const outputType = asBulkOutputType(field(row, ["outputType", "output_type", "format", "type"]));
+    return [
+      {
+        jobId,
+        status,
+        statusLabel:
+          status === "waiting"
+            ? "En attente"
+            : status === "pending"
+              ? "En cours"
+              : status === "ready"
+                ? "Terminé"
+                : status === "partial"
+                  ? "Terminé avec erreurs"
+                  : "Échoué",
+        outputType,
+        fileName: fileName || `Traitement ${jobId.slice(0, 8)}`,
+        createdAt,
+        itemCount,
+      },
+    ];
+  });
+}
+
+/** Déduit outputType depuis le détail d'un job (fallback pdf). */
+export function extractBulkOutputType(data: unknown): BulkOutputType {
+  if (!data || typeof data !== "object") return "pdf";
+  const record = data as Record<string, unknown>;
+  const direct = field(record, ["outputType", "output_type", "format"]);
+  if (direct) return asBulkOutputType(direct);
+  if ("data" in record && record.data && typeof record.data === "object") {
+    return extractBulkOutputType(record.data);
+  }
+  return "pdf";
+}
+
 async function bulkDownloadBlob(path: string) {
   const token = getSessionToken();
   if (!token) throw new ApiError("Connectez-vous pour utiliser le service.");

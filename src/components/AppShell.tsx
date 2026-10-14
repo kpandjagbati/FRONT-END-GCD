@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import ProfileMenu from "@/components/ProfileMenu";
 import RecentSearchesMenu from "@/components/RecentSearchesMenu";
-import { BREADCRUMBS, NAV_ITEMS } from "@/lib/nav";
+import { NAV_ITEMS, resolveBreadcrumb } from "@/lib/nav";
 import {
   IconChevronsLeft,
   IconChevronsRight,
@@ -36,7 +36,7 @@ export default function AppShell({ children }: Readonly<{ children: React.ReactN
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const crumb = BREADCRUMBS[pathname];
+  const crumb = resolveBreadcrumb(pathname);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -112,7 +112,9 @@ export default function AppShell({ children }: Readonly<{ children: React.ReactN
         <nav className="mt-3 flex flex-1 flex-col gap-1.5 overflow-y-auto px-2.5 pb-[max(1rem,env(safe-area-inset-bottom))]">
           {NAV_ITEMS.map((item) => {
             const Icon = ICONS[item.icon];
-            const active = pathname === item.href;
+            const active =
+              pathname === item.href ||
+              (item.href !== "/accueil" && pathname.startsWith(`${item.href}/`));
             const isMixx = item.href === "/tmoney";
 
             return (
