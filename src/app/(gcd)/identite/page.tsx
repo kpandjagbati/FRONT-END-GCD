@@ -18,16 +18,27 @@ import { validateRequired } from "@/lib/search-guards";
 import { useVoirSearch } from "@/lib/use-voir-search";
 
 const COLUMNS: YasColumn<IdentiteRow>[] = [
-  { key: "nom", label: "Nom", emphasis: true },
-  { key: "prenoms", label: "Prénoms", emphasis: true },
-  { key: "naissance", label: "Date de naissance", render: (row) => formatDateTime(row.naissance) },
-  { key: "typePiece", label: "Type de pièce" },
-  { key: "numPiece", label: "N° Pièce", emphasis: true },
-  { key: "mobile", label: "Mobile", emphasis: true },
-  { key: "dateCreation", label: "Date création", render: (row) => formatDateTime(row.dateCreation) },
+  { key: "nom", label: "Nom", emphasis: true, width: "12%" },
+  { key: "prenoms", label: "Prénoms", emphasis: true, width: "16%", wrap: true },
+  {
+    key: "naissance",
+    label: "Date de naissance",
+    width: "12%",
+    render: (row) => formatDateTime(row.naissance),
+  },
+  { key: "typePiece", label: "Type de pièce", width: "12%", wrap: true },
+  { key: "numPiece", label: "N° Pièce", emphasis: true, width: "12%" },
+  { key: "mobile", label: "Mobile", emphasis: true, width: "12%" },
+  {
+    key: "dateCreation",
+    label: "Date création",
+    width: "12%",
+    render: (row) => formatDateTime(row.dateCreation),
+  },
   {
     key: "dateActualisation",
     label: "Date d'activation",
+    width: "12%",
     render: (row) => formatDateTime(row.dateActualisation),
   },
 ];

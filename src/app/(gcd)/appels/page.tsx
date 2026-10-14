@@ -145,8 +145,8 @@ function SensBadge({ value }: Readonly<{ value: string }>) {
 
 const RESULT_COLUMNS: YasColumn<AppelRow>[] = [
   { key: "appelant", label: "Appelant", emphasis: true, width: "10%" },
-  { key: "appele", label: "Appelé", emphasis: true, width: "9%" },
-  { key: "identiteAppelee", label: "Identité", emphasis: true, width: "8%" },
+  { key: "appele", label: "Appelé", emphasis: true, width: "9%", wrap: true },
+  { key: "identiteAppelee", label: "Identité", emphasis: true, width: "14%", wrap: true },
   {
     key: "date",
     label: "Date",
@@ -159,7 +159,7 @@ const RESULT_COLUMNS: YasColumn<AppelRow>[] = [
     key: "type",
     label: "Type",
     align: "center",
-    width: "5%",
+    width: "6%",
     render: (row) =>
       row.type ? (
         <span className="inline-flex rounded-full bg-[#eef4ff] px-2 py-0.5 text-xs font-bold text-yas-navy">
@@ -176,9 +176,9 @@ const RESULT_COLUMNS: YasColumn<AppelRow>[] = [
     width: "4%",
     render: (row) => <SensBadge value={row.sens} />,
   },
-  { key: "imsi", label: "IMSI", width: "11%" },
-  { key: "imei", label: "IMEI", width: "11%" },
-  { key: "localisation", label: "Localisation", width: "21%", wrap: true },
+  { key: "imsi", label: "IMSI", width: "11%", wrap: true },
+  { key: "imei", label: "IMEI", width: "11%", wrap: true },
+  { key: "localisation", label: "Localisation", width: "14%", wrap: true },
 ];
 
 export default function AppelsPage() {

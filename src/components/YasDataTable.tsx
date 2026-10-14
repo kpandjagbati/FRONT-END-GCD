@@ -63,12 +63,12 @@ export default function YasDataTable<T extends { id: string }>({
     ? "px-1 py-1.5 sm:px-1.5"
     : tight
       ? "px-1.5 py-1.5 sm:px-2"
-      : "px-3 py-3 sm:px-5 sm:py-3.5";
+      : "px-2.5 py-2 sm:px-3 sm:py-2.5";
   const headPad = fit
-    ? "px-1 py-1.5 text-[10px] sm:px-1.5 sm:text-[11px]"
+    ? "px-1 py-1.5 text-[9px] sm:px-1.5 sm:text-[10px]"
     : tight
-      ? "px-1.5 py-2 text-[10px] sm:px-2 sm:text-xs"
-      : "px-3 py-2.5 text-xs sm:px-4 sm:py-3 sm:text-[13px]";
+      ? "px-1.5 py-1.5 text-[9px] sm:px-2 sm:text-[10px]"
+      : "px-2.5 py-2 text-[10px] sm:px-3 sm:py-2.5 sm:text-xs";
 
   return (
     <div
@@ -127,7 +127,7 @@ export default function YasDataTable<T extends { id: string }>({
       <div className="w-full min-w-0 overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
         <table
           className={`w-full text-left ${layout === "fixed" || fit ? "table-fixed" : "table-auto"} ${
-            tight ? "text-xs sm:text-sm" : "text-sm"
+            tight ? "text-[11px] sm:text-xs" : "text-xs sm:text-sm"
           }`}
         >
           {layout === "fixed" || fit ? (
@@ -187,7 +187,7 @@ export default function YasDataTable<T extends { id: string }>({
                         }
                         style={column.width ? { width: column.width } : undefined}
                         className={`${cellPad} ${
-                          wrap ? "whitespace-normal break-all align-top" : "truncate whitespace-nowrap"
+                          wrap ? "whitespace-normal break-words align-top" : "truncate whitespace-nowrap"
                         } ${column.className ?? ""} ${
                           emphasis ? "font-bold text-yas-navy" : "font-medium text-neutral-600"
                         } ${
