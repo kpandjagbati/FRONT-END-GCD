@@ -21,17 +21,27 @@ export function ActionButton({
   disabled,
   loading,
   onClick,
+  "aria-label": ariaLabel,
 }: Readonly<{
   variant: Variant;
   children: React.ReactNode;
   disabled?: boolean;
   loading?: boolean;
   onClick?: () => void;
+  "aria-label"?: string;
 }>) {
   const inactive = Boolean(disabled && !loading);
+  const paleTone =
+    variant === "pdf-red"
+      ? "bg-[#f0a8ab] text-white hover:bg-[#f0a8ab]"
+      : variant === "excel"
+        ? "bg-[#8fbf9f] text-white hover:bg-[#8fbf9f]"
+        : variant === "word"
+          ? "bg-[#8fa8c9] text-white hover:bg-[#8fa8c9]"
+          : "";
   const tone =
-    inactive && variant === "pdf-red"
-      ? "bg-[#f0a8ab] text-white hover:bg-[#f0a8ab] cursor-not-allowed shadow-none"
+    inactive && paleTone
+      ? `${paleTone} cursor-not-allowed shadow-none`
       : `${styles[variant]} ${inactive ? "opacity-60" : ""}`;
 
   return (
@@ -39,6 +49,7 @@ export function ActionButton({
       type="button"
       disabled={disabled || loading}
       aria-busy={loading || undefined}
+      aria-label={ariaLabel}
       onClick={onClick}
       className={`btn btn-sm h-9 min-h-9 max-w-full shrink-0 gap-1.5 px-2.5 text-xs sm:px-5 sm:text-sm border-none rounded-xl font-semibold shadow-sm disabled:opacity-100 ${tone}`}
     >
@@ -78,10 +89,17 @@ export function PdfRedButton({
   onClick,
   disabled,
   loading,
-}: { onClick?: () => void; disabled?: boolean; loading?: boolean } = {}) {
+  iconOnly = false,
+}: { onClick?: () => void; disabled?: boolean; loading?: boolean; iconOnly?: boolean } = {}) {
   return (
-    <ActionButton variant="pdf-red" onClick={onClick} disabled={disabled} loading={loading}>
-      PDF
+    <ActionButton
+      variant="pdf-red"
+      onClick={onClick}
+      disabled={disabled}
+      loading={loading}
+      aria-label={iconOnly ? "Télécharger PDF" : undefined}
+    >
+      {iconOnly ? null : "PDF"}
       <ButtonMark loading={loading}>
         <IconPdfLock className="size-4" />
       </ButtonMark>
@@ -123,10 +141,17 @@ export function ExcelButton({
   onClick,
   disabled,
   loading,
-}: { onClick?: () => void; disabled?: boolean; loading?: boolean } = {}) {
+  iconOnly = false,
+}: { onClick?: () => void; disabled?: boolean; loading?: boolean; iconOnly?: boolean } = {}) {
   return (
-    <ActionButton variant="excel" onClick={onClick} disabled={disabled} loading={loading}>
-      Excel
+    <ActionButton
+      variant="excel"
+      onClick={onClick}
+      disabled={disabled}
+      loading={loading}
+      aria-label={iconOnly ? "Télécharger Excel" : undefined}
+    >
+      {iconOnly ? null : "Excel"}
       <ButtonMark loading={loading}>
         <IconExcel className="size-4" />
       </ButtonMark>
@@ -138,10 +163,17 @@ export function WordButton({
   onClick,
   disabled,
   loading,
-}: { onClick?: () => void; disabled?: boolean; loading?: boolean } = {}) {
+  iconOnly = false,
+}: { onClick?: () => void; disabled?: boolean; loading?: boolean; iconOnly?: boolean } = {}) {
   return (
-    <ActionButton variant="word" onClick={onClick} disabled={disabled} loading={loading}>
-      Word
+    <ActionButton
+      variant="word"
+      onClick={onClick}
+      disabled={disabled}
+      loading={loading}
+      aria-label={iconOnly ? "Télécharger Word" : undefined}
+    >
+      {iconOnly ? null : "Word"}
       <ButtonMark loading={loading}>
         <IconWord className="size-4" />
       </ButtonMark>

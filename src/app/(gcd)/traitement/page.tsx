@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { IconChevronsDown, IconChevronsUp, IconClose, IconFile, IconWarning } from "@/components/icons";
-import { PdfRedButton } from "@/components/ActionButtons";
+import { ExcelButton, PdfRedButton, WordButton } from "@/components/ActionButtons";
 import YasLoadingOverlay from "@/components/YasLoadingOverlay";
 import { saveBlob } from "@/lib/downloads";
 import {
@@ -17,9 +17,17 @@ import {
   isBulkSearchComplete,
   parseBulkSearchItems,
   readPasswordFromBlob,
+  type BulkOutputType,
+  type BulkSearchItemStatus,
 } from "@/lib/gcd-api";
 import { frenchDateToIso } from "@/lib/format-date";
 import { useIsClient } from "@/lib/use-client";
+
+const OUTPUT_OPTIONS: { value: BulkOutputType; label: string }[] = [
+  { value: "pdf", label: "PDF" },
+  { value: "excel", label: "Excel" },
+  { value: "word", label: "Word" },
+];
 
 const CSV_COLUMNS = ["type", "valeur", "date_debut", "date_fin"] as const;
 const TREATMENT_PAGE_SIZE = 10;
@@ -51,7 +59,8 @@ type TreatmentJob = {
   type: string;
   valeur: string;
   dateDebut: string;
-  status: "pending" | "ready" | "error";
+  dateFin: string;
+  status: BulkSearchItemStatus;
   fileName?: string;
   passwordFileName?: string;
 };
@@ -64,6 +73,7 @@ const PREVIEW_JOBS: TreatmentJob[] = Array.from({ length: 24 }, (_, index) => {
     type: row[0],
     valeur: row[1],
     dateDebut: row[2],
+    dateFin: row[3],
     status: index === 0 ? ("ready" as const) : ("pending" as const),
     fileName: `apercu-${index + 1}.pdf`,
   };
@@ -79,16 +89,24 @@ function typeLabel(type: string) {
   return TYPE_LABELS[type.toLowerCase()] ?? type.toUpperCase();
 }
 
-function statusLabel(status: TreatmentJob["status"]) {
+function statusLabel(status: BulkSearchItemStatus) {
+  if (status === "waiting") return "En attente";
+  if (status === "pending") return "En cours";
   if (status === "ready") return "Terminé";
-  if (status === "error") return "Erreur";
-  return "En cours";
+  if (status === "partial") return "Terminé avec erreurs";
+  return "Échoué";
 }
 
-function statusClassName(status: TreatmentJob["status"]) {
+function statusClassName(status: BulkSearchItemStatus) {
   if (status === "ready") return "text-[#1f7a46]";
+  if (status === "partial") return "text-amber-700";
   if (status === "error") return "text-red-500";
+  if (status === "waiting") return "text-neutral-500";
   return "text-amber-600";
+}
+
+function isDownloadReady(status: BulkSearchItemStatus) {
+  return status === "ready" || status === "partial";
 }
 
 function csvDelimiter(headerLine: string) {
@@ -133,40 +151,68 @@ function rowsFromCsv(text: string): TreatmentJob[] {
   const typeIndex = header.indexOf("type");
   const valueIndex = header.findIndex((cell) => cell === "valeur" || cell === "value");
   const startIndex = header.findIndex((cell) => cell === "date_debut" || cell === "datedebut");
+  const endIndex = header.findIndex((cell) => cell === "date_fin" || cell === "datefin");
   if (typeIndex < 0) return [];
   return lines.slice(1).flatMap((line, index) => {
     const cells = line.split(delimiter).map((cell) => cell.trim());
     const type = cells[typeIndex]?.toLowerCase();
     if (!type) return [];
-    const rawDate = startIndex >= 0 ? cells[startIndex] ?? "" : "";
+    const rawStart = startIndex >= 0 ? cells[startIndex] ?? "" : "";
+    const rawEnd = endIndex >= 0 ? cells[endIndex] ?? "" : "";
     return [
       {
         id: `${type}-${index}`,
         itemId: "",
         type,
         valeur: valueIndex >= 0 ? cells[valueIndex] ?? "" : "",
-        dateDebut: frenchDateToIso(rawDate) || rawDate,
-        status: "pending" as const,
+        dateDebut: frenchDateToIso(rawStart) || rawStart,
+        dateFin: frenchDateToIso(rawEnd) || rawEnd,
+        status: "waiting" as const,
       },
     ];
   });
 }
 
-function jobsFromBulk(data: unknown, fallback: TreatmentJob[]): TreatmentJob[] {
+const STATUS_RANK: Record<BulkSearchItemStatus, number> = {
+  waiting: 0,
+  pending: 1,
+  ready: 2,
+  partial: 2,
+  error: 2,
+};
+
+/** Évite le scintillement En attente ↔ En cours ↔ Terminé entre deux polls. */
+function mergeStatus(previous: BulkSearchItemStatus | undefined, next: BulkSearchItemStatus) {
+  if (!previous) return next;
+  if (next === "ready" || next === "partial" || next === "error") return next;
+  if (previous === "ready" || previous === "partial" || previous === "error") return previous;
+  if (STATUS_RANK[next] < STATUS_RANK[previous]) return previous;
+  return next;
+}
+
+function jobsFromBulk(
+  data: unknown,
+  fallback: TreatmentJob[],
+  previous: TreatmentJob[] = [],
+): TreatmentJob[] {
   const items = parseBulkSearchItems(data);
-  if (items.length === 0) return fallback;
+  // Réponse sans items : garder l'état actuel (ne pas revenir à « En attente »).
+  if (items.length === 0) return previous.length > 0 ? previous : fallback;
   return items.map((item, index) => {
-    const base = fallback[index];
-    const fileName = item.fileName || base?.fileName;
+    const base = fallback[index] || previous[index];
+    const prev =
+      previous.find((job) => job.itemId && job.itemId === item.itemId) || previous[index] || base;
+    const fileName = item.fileName || prev?.fileName || base?.fileName;
     return {
       id: `item-${item.itemId}`,
       itemId: item.itemId,
-      type: item.type || base?.type || "",
-      valeur: item.valeur || base?.valeur || "",
-      dateDebut: item.dateDebut || base?.dateDebut || "",
-      status: item.status,
+      type: item.type || prev?.type || base?.type || "",
+      valeur: item.valeur || prev?.valeur || base?.valeur || "",
+      dateDebut: item.dateDebut || prev?.dateDebut || base?.dateDebut || "",
+      dateFin: item.dateFin || prev?.dateFin || base?.dateFin || "",
+      status: mergeStatus(prev?.status, item.status),
       fileName,
-      passwordFileName: item.passwordFileName || base?.passwordFileName,
+      passwordFileName: item.passwordFileName || prev?.passwordFileName || base?.passwordFileName,
     };
   });
 }
@@ -204,6 +250,7 @@ export default function TraitementPage() {
   } | null>(null);
   const [listScrollDir, setListScrollDir] = useState<"down" | "up" | null>(null);
   const [listPage, setListPage] = useState(1);
+  const [outputType, setOutputType] = useState<BulkOutputType>("pdf");
   const inputRef = useRef<HTMLInputElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const isClient = useIsClient();
@@ -269,12 +316,12 @@ export default function TraitementPage() {
       setListPage(1);
       setBulkJobId(null);
       const uploadFile = new File([uploadText], file.name, { type: "text/csv" });
-      const created = await bulkSearch(uploadFile);
+      const created = await bulkSearch(uploadFile, outputType);
       const jobId = extractBulkJobId(created);
       if (!jobId) {
         // Certains backends renvoient déjà le détail dans la création.
         const immediate = jobsFromBulk(created, rows);
-        if (immediate.some((job) => job.status === "ready")) {
+        if (immediate.some((job) => isDownloadReady(job.status))) {
           setJobs(immediate);
           setNotice(true);
           return;
@@ -288,9 +335,9 @@ export default function TraitementPage() {
       // L'upload est accepté : on laisse voir la progression pendant le polling.
       setLoading(false);
       const finalData = await waitForBulkSearch(jobId, (data) => {
-        setJobs(jobsFromBulk(data, rows));
+        setJobs((prev) => jobsFromBulk(data, rows, prev));
       });
-      setJobs(jobsFromBulk(finalData, rows));
+      setJobs((prev) => jobsFromBulk(finalData, rows, prev));
       setPreviewOpen(true);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Le traitement n'a pas abouti.");
@@ -300,16 +347,24 @@ export default function TraitementPage() {
   }
 
   async function downloadTreatment(job: TreatmentJob) {
-    if (!bulkJobId || job.status !== "ready" || !job.itemId || downloading) return;
+    if (!bulkJobId || !isDownloadReady(job.status) || !job.itemId || downloading) return;
     setDownloading(job.id);
     setError(null);
     try {
-      // Arif : ?file=document puis ?file=password
+      // Arif : ?file=document (et ?file=password pour PDF bloqué)
       const document = await downloadBulkSearchItem(bulkJobId, job.itemId, "document");
-      const pdfName =
-        (job.fileName && /\.pdf$/i.test(job.fileName) ? job.fileName : "") ||
-        (document.filename && /\.pdf$/i.test(document.filename) ? document.filename : "") ||
-        `traitement-${job.itemId}.pdf`;
+      const extension = outputType === "excel" ? "xlsx" : outputType === "word" ? "docx" : "pdf";
+      const fileName =
+        job.fileName ||
+        document.filename ||
+        `traitement-${job.itemId}.${extension}`;
+
+      saveBlob(fileName, document.blob);
+
+      if (outputType !== "pdf") {
+        setPasswordOffer(null);
+        return;
+      }
 
       let passwordFile: Blob | null = null;
       let passwordFileName = job.passwordFileName || "";
@@ -326,7 +381,6 @@ export default function TraitementPage() {
         passwordFile = null;
       }
 
-      saveBlob(pdfName, document.blob);
       if (passwordFile && passwordFile.size > 0) {
         const pwdName = passwordFileName || "password.txt";
         saveBlob(pwdName, passwordFile);
@@ -345,7 +399,7 @@ export default function TraitementPage() {
 
   async function downloadAllAsZip(list: TreatmentJob[]) {
     if (!bulkJobId || downloading) return;
-    const ready = list.filter((job) => job.status === "ready" && job.itemId);
+    const ready = list.filter((job) => isDownloadReady(job.status) && job.itemId);
     if (ready.length === 0) return;
     setDownloading("all-zip");
     setError(null);
@@ -360,36 +414,37 @@ export default function TraitementPage() {
     }
   }
 
-  /** PDF + .txt un par un (pas de ZIP), via ?file=document|password. */
+  /** Fichiers un par un (pas de ZIP), via ?file=document|password. */
   async function downloadAllAsFiles(list: TreatmentJob[]) {
     if (!bulkJobId || downloading) return;
-    const ready = list.filter((job) => job.status === "ready" && job.itemId);
+    const ready = list.filter((job) => isDownloadReady(job.status) && job.itemId);
     if (ready.length === 0) return;
     setDownloading("all-files");
     setError(null);
     try {
+      const extension = outputType === "excel" ? "xlsx" : outputType === "word" ? "docx" : "pdf";
       for (let index = 0; index < ready.length; index += 1) {
         const job = ready[index];
         const document = await downloadBulkSearchItem(bulkJobId, job.itemId, "document");
-        const pdfName =
-          (job.fileName && /\.pdf$/i.test(job.fileName) ? job.fileName : "") ||
-          (document.filename && /\.pdf$/i.test(document.filename) ? document.filename : "") ||
-          `traitement-${job.itemId}.pdf`;
+        const fileName =
+          job.fileName || document.filename || `traitement-${job.itemId}.${extension}`;
 
-        saveBlob(pdfName, document.blob);
+        saveBlob(fileName, document.blob);
 
-        try {
-          const password = await downloadBulkSearchItem(bulkJobId, job.itemId, "password");
-          if (password.blob.size > 0) {
-            const pwdName =
-              (password.filename && /\.txt$/i.test(password.filename) ? password.filename : "") ||
-              job.passwordFileName ||
-              `Password-${job.valeur || job.itemId}.txt`;
-            await new Promise((resolve) => window.setTimeout(resolve, 350));
-            saveBlob(pwdName, password.blob);
+        if (outputType === "pdf") {
+          try {
+            const password = await downloadBulkSearchItem(bulkJobId, job.itemId, "password");
+            if (password.blob.size > 0) {
+              const pwdName =
+                (password.filename && /\.txt$/i.test(password.filename) ? password.filename : "") ||
+                job.passwordFileName ||
+                `Password-${job.valeur || job.itemId}.txt`;
+              await new Promise((resolve) => window.setTimeout(resolve, 350));
+              saveBlob(pwdName, password.blob);
+            }
+          } catch {
+            // document déjà sauvé
           }
-        } catch {
-          // PDF déjà sauvé
         }
 
         if (index < ready.length - 1) {
@@ -403,7 +458,7 @@ export default function TraitementPage() {
     }
   }
 
-  const hasReadyFile = jobs.some((job) => job.status === "ready");
+  const hasReadyFile = jobs.some((job) => isDownloadReady(job.status));
   const preview = SHOW_TREATMENT_PREVIEW && !hasReadyFile;
   const shown = preview ? (started ? PREVIEW_JOBS : []) : jobs;
   const pageCount = Math.max(1, Math.ceil(shown.length / TREATMENT_PAGE_SIZE));
@@ -414,7 +469,7 @@ export default function TraitementPage() {
   // Afficher dès que chaque ligne est terminée (plus besoin d'attendre un flag ZIP séparé).
   const allReady =
     shown.length > 0 &&
-    shown.every((job) => job.status === "ready" || job.status === "error") &&
+    shown.every((job) => isDownloadReady(job.status) || job.status === "error") &&
     hasReadyFile;
 
   function updateListScrollDir() {
@@ -601,7 +656,22 @@ export default function TraitementPage() {
 
           {error ? <p className="mt-2 text-center text-xs font-semibold text-red-500">{error}</p> : null}
 
-          <div className="mt-4 flex flex-col items-stretch gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center sm:gap-3">
+          <div className="mt-4 flex flex-col items-stretch gap-2.5 sm:flex-row sm:flex-wrap sm:items-end sm:justify-center sm:gap-3">
+            <label className="flex w-full flex-col gap-1.5 text-left sm:w-auto">
+              <span className="text-xs font-semibold text-yas-navy">Type de téléchargement</span>
+              <select
+                value={outputType}
+                disabled={loading}
+                onChange={(event) => setOutputType(event.target.value as BulkOutputType)}
+                className="h-10 min-h-10 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm font-semibold text-yas-navy outline-none focus:border-yas-navy focus:shadow-[0_0_0_3px_rgba(1,55,125,0.08)] sm:min-w-[11rem]"
+              >
+                {OUTPUT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button
               type="button"
               disabled={!file || loading}
@@ -685,19 +755,22 @@ export default function TraitementPage() {
                     ref={tableScrollRef}
                     className="h-full overflow-auto rounded-xl border border-neutral-100"
                   >
-                    <table className="w-full min-w-[34rem] text-left text-xs sm:min-w-[42rem] sm:text-sm">
+                    <table className="w-full min-w-[40rem] text-left text-xs sm:min-w-[48rem] sm:text-sm">
                       <thead className="sticky top-0 z-[1] bg-yas-navy text-[10px] uppercase tracking-wide text-white sm:text-xs">
                         <tr>
                           <th className="px-2.5 py-2.5 font-semibold sm:px-4 sm:py-3">Type</th>
                           <th className="px-2.5 py-2.5 font-semibold sm:px-4 sm:py-3">Valeur</th>
                           <th className="px-2.5 py-2.5 font-semibold sm:px-4 sm:py-3">Date de début</th>
+                          <th className="px-2.5 py-2.5 font-semibold sm:px-4 sm:py-3">Date de fin</th>
                           <th className="px-2.5 py-2.5 font-semibold sm:px-4 sm:py-3">Statut</th>
-                          <th className="px-2.5 py-2.5 font-semibold sm:px-4 sm:py-3">PDF</th>
+                          <th className="px-2.5 py-2.5 font-semibold sm:px-4 sm:py-3">Téléchargement</th>
                         </tr>
                       </thead>
                       <tbody>
                         {pageRows.map((job) => {
-                          const pdfEnabled = job.status === "ready" && Boolean(job.itemId);
+                          const canDownload = isDownloadReady(job.status) && Boolean(job.itemId);
+                          const downloadBusy = !preview && canDownload && downloading === job.id;
+                          const downloadDisabled = preview || !canDownload || downloading === job.id;
                           return (
                           <tr key={job.id} className="border-t border-neutral-100 bg-white">
                             <td className="px-2.5 py-2.5 font-semibold text-yas-navy sm:px-4 sm:py-3">
@@ -709,20 +782,46 @@ export default function TraitementPage() {
                             <td className="px-2.5 py-2.5 text-neutral-700 sm:px-4 sm:py-3">
                               {job.dateDebut || "—"}
                             </td>
+                            <td className="px-2.5 py-2.5 text-neutral-700 sm:px-4 sm:py-3">
+                              {job.dateFin || "—"}
+                            </td>
                             <td className="px-2.5 py-2.5 sm:px-4 sm:py-3">
                               <span className={`text-xs font-semibold ${statusClassName(job.status)}`}>
                                 {statusLabel(job.status)}
                               </span>
                             </td>
                             <td className="px-2.5 py-2.5 sm:px-4 sm:py-3">
-                              <PdfRedButton
-                                disabled={preview || !pdfEnabled || downloading === job.id}
-                                loading={!preview && pdfEnabled && downloading === job.id}
-                                onClick={() => {
-                                  if (preview || !pdfEnabled) return;
-                                  void downloadTreatment(job);
-                                }}
-                              />
+                              {outputType === "excel" ? (
+                                <ExcelButton
+                                  iconOnly
+                                  disabled={downloadDisabled}
+                                  loading={downloadBusy}
+                                  onClick={() => {
+                                    if (preview || !canDownload) return;
+                                    void downloadTreatment(job);
+                                  }}
+                                />
+                              ) : outputType === "word" ? (
+                                <WordButton
+                                  iconOnly
+                                  disabled={downloadDisabled}
+                                  loading={downloadBusy}
+                                  onClick={() => {
+                                    if (preview || !canDownload) return;
+                                    void downloadTreatment(job);
+                                  }}
+                                />
+                              ) : (
+                                <PdfRedButton
+                                  iconOnly
+                                  disabled={downloadDisabled}
+                                  loading={downloadBusy}
+                                  onClick={() => {
+                                    if (preview || !canDownload) return;
+                                    void downloadTreatment(job);
+                                  }}
+                                />
+                              )}
                             </td>
                           </tr>
                           );
@@ -801,7 +900,7 @@ export default function TraitementPage() {
                   <IconClose className="size-4" />
                 </button>
                 <p className="pr-8 font-bold">Fichier bien chargé !</p>
-                <p className="mt-1.5 font-medium leading-relaxed">Le traitement est encore en cours.</p>
+                <p className="mt-1.5 font-medium leading-relaxed">Traitement en cours</p>
               </div>
             </aside>,
             document.body,

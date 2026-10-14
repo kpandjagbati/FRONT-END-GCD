@@ -446,9 +446,12 @@ export function querySubscriber(msisdn: string) {
   return gcdFetch<unknown>(`/subscriber/query?msisdn=${encodeURIComponent(full)}`);
 }
 
-export function bulkSearch(file: File) {
+export type BulkOutputType = "pdf" | "excel" | "word";
+
+export function bulkSearch(file: File, outputType: BulkOutputType = "pdf") {
   const body = new FormData();
   body.append("file", file);
+  body.append("outputType", outputType);
   return gcdFetch<unknown>("/get-calls-details/bulk-search/v2", { method: "POST", body });
 }
 
@@ -598,12 +601,16 @@ export function extractBulkJobId(data: unknown): string {
   return "";
 }
 
+/** Statuts UI alignés Arif (bulk + item). */
+export type BulkSearchItemStatus = "waiting" | "pending" | "ready" | "partial" | "error";
+
 export type BulkSearchItem = {
   itemId: string;
   type: string;
   valeur: string;
   dateDebut: string;
-  status: "pending" | "ready" | "error";
+  dateFin: string;
+  status: BulkSearchItemStatus;
   fileName?: string;
   passwordFileName?: string;
 };
@@ -616,13 +623,26 @@ export function passwordFileNameFromPdf(pdfName: string) {
   return swapped !== base.replace(/\.pdf$/i, ".txt") ? swapped : "";
 }
 
-function bulkItemStatus(raw: string): BulkSearchItem["status"] {
-  const value = raw.trim().toLowerCase();
-  if (!value) return "pending";
-  if (/fail|error|ko|reject/.test(value)) return "error";
-  if (/ready|done|success|complete|ok|finish|generated|available/.test(value)) return "ready";
-  if (/pend|wait|progress|run|process|queue|start/.test(value)) return "pending";
-  return "pending";
+/**
+ * Item : PENDING → En Attente, IN_PROGRESS → En Cours, SUCCESS → Terminé, FAILED → Echoué
+ * Bulk : COMPLETED_WITH_ERRORS → Terminé avec erreurs (si renvoyé au niveau item)
+ */
+function bulkItemStatus(raw: string): BulkSearchItemStatus {
+  const value = raw.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (!value) return "waiting";
+  if (value === "pending") return "waiting";
+  if (value === "in_progress" || /progress|run|process|queue|start/.test(value)) return "pending";
+  if (value === "completed_with_errors" || /with_errors|partial/.test(value)) return "partial";
+  if (value === "failed" || /fail|error|ko|reject/.test(value)) return "error";
+  if (
+    value === "success" ||
+    value === "completed" ||
+    /ready|done|success|complete|ok|finish|generated|available/.test(value)
+  ) {
+    return "ready";
+  }
+  if (/pend|wait/.test(value)) return "waiting";
+  return "waiting";
 }
 
 function bulkItemsArray(data: unknown): Record<string, unknown>[] {
@@ -647,7 +667,7 @@ export function parseBulkSearchItems(data: unknown): BulkSearchItem[] {
     const flat = flattenRow(row);
     const statusRaw =
       field(flat, ["status", "state", "itemStatus", "processingStatus"]) ||
-      (field(flat, ["pdfFileName", "fileName", "filename"]) ? "ready" : "pending");
+      (field(flat, ["pdfFileName", "fileName", "filename"]) ? "SUCCESS" : "IN_PROGRESS");
     // itemId = id API (nombre ou chaîne, ex. 12dcsampt…-526db)
     const itemIdRaw = field(flat, ["id", "itemId", "item_id"]).trim();
     const fileName = field(flat, ["pdfFileName", "fileName", "filename", "fichier", "name"]) || undefined;
@@ -666,6 +686,7 @@ export function parseBulkSearchItems(data: unknown): BulkSearchItem[] {
       type: field(flat, ["type", "searchType", "keywordSearchBy"]).toLowerCase(),
       valeur: field(flat, ["valeur", "value", "searchValue", "msisdn", "imei", "imsi"]),
       dateDebut: field(flat, ["dateDebut", "date_debut", "startDate", "start"]),
+      dateFin: field(flat, ["dateFin", "date_fin", "endDate", "end"]),
       status: bulkItemStatus(statusRaw),
       fileName,
       passwordFileName: passwordFileName || undefined,
@@ -679,17 +700,30 @@ export function isBulkSearchComplete(data: unknown) {
   const statusValue = record.status ?? record.state ?? record.jobStatus ?? record.processingStatus ?? "";
   const status =
     typeof statusValue === "string"
-      ? statusValue.toLowerCase()
+      ? statusValue.toLowerCase().replace(/[\s-]+/g, "_")
       : typeof statusValue === "object" && statusValue
-        ? String((statusValue as Record<string, unknown>).message ?? (statusValue as Record<string, unknown>).code ?? "").toLowerCase()
+        ? String((statusValue as Record<string, unknown>).message ?? (statusValue as Record<string, unknown>).code ?? "")
+            .toLowerCase()
+            .replace(/[\s-]+/g, "_")
         : "";
-  if (/fail|error/.test(status) && !/success/.test(status)) return true;
-  if (/ready|done|success|complete|finish/.test(status)) return true;
+  // Bulk : PENDING / IN_PROGRESS → continuer ; COMPLETED / COMPLETED_WITH_ERRORS / FAILED → stop
+  if (status === "pending" || status === "in_progress") return false;
+  if (status === "failed" || (/fail|error/.test(status) && !/success|completed/.test(status))) return true;
+  if (
+    status === "completed" ||
+    status === "completed_with_errors" ||
+    /ready|done|success|complete|finish/.test(status)
+  ) {
+    return true;
+  }
   if (record.filesAvailable === true) return true;
   const progress = Number(record.progress);
   if (Number.isFinite(progress) && progress >= 100) return true;
   const items = parseBulkSearchItems(data);
-  return items.length > 0 && items.every((item) => item.status === "ready" || item.status === "error");
+  return (
+    items.length > 0 &&
+    items.every((item) => item.status === "ready" || item.status === "error" || item.status === "partial")
+  );
 }
 
 function objectRows(value: unknown): Record<string, unknown>[] {
