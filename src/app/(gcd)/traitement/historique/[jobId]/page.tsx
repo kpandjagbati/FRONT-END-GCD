@@ -14,7 +14,7 @@ import {
   typeLabel,
   type TreatmentJob,
 } from "@/lib/bulk-treatment";
-import { saveBlob } from "@/lib/downloads";
+import { saveBlob, saveBlobsInBrowser } from "@/lib/downloads";
 import {
   ApiError,
   clearBulkZipCache,
@@ -154,33 +154,32 @@ export default function TraitementHistoriqueDetailPage() {
     setError(null);
     try {
       const extension = outputType === "excel" ? "xlsx" : outputType === "word" ? "docx" : "pdf";
-      for (let index = 0; index < ready.length; index += 1) {
-        const job = ready[index];
+      const files: { filename: string; blob: Blob }[] = [];
+      for (const job of ready) {
         const document = await downloadBulkSearchItem(jobId, job.itemId, "document");
-        const fileName =
-          job.fileName || document.filename || `traitement-${job.itemId}.${extension}`;
-        saveBlob(fileName, document.blob);
+        files.push({
+          filename: job.fileName || document.filename || `traitement-${job.itemId}.${extension}`,
+          blob: document.blob,
+        });
 
         if (outputType === "pdf") {
           try {
             const password = await downloadBulkSearchItem(jobId, job.itemId, "password");
             if (password.blob.size > 0) {
-              const pwdName =
-                (password.filename && /\.txt$/i.test(password.filename) ? password.filename : "") ||
-                job.passwordFileName ||
-                `Password-${job.valeur || job.itemId}.txt`;
-              await new Promise((resolve) => window.setTimeout(resolve, 350));
-              saveBlob(pwdName, password.blob);
+              files.push({
+                filename:
+                  (password.filename && /\.txt$/i.test(password.filename) ? password.filename : "") ||
+                  job.passwordFileName ||
+                  `Password-${job.valeur || job.itemId}.txt`,
+                blob: password.blob,
+              });
             }
           } catch {
-            // document déjà sauvé
+            // document déjà pris
           }
         }
-
-        if (index < ready.length - 1) {
-          await new Promise((resolve) => window.setTimeout(resolve, 500));
-        }
       }
+      await saveBlobsInBrowser(files);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Le téléchargement a échoué.");
     } finally {

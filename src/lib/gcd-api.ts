@@ -462,11 +462,10 @@ export function getBulkSearch(jobId: string) {
 
 /**
  * Liste des traitements récents de l'utilisateur connecté.
- * Endpoint provisoire — Arif confirmera le path exact.
- * Attendu : GET → tableau { id|jobId|reference, status, outputType?, fileName?, createdAt?, itemCount? }
+ * Arif : GET /get-calls-details/bulk-search/v2 (même path que le POST upload, méthode GET).
  */
 export function listRecentBulkSearches() {
-  return gcdFetch<unknown>("/get-calls-details/bulk-search/v2/history");
+  return gcdFetch<unknown>("/get-calls-details/bulk-search/v2");
 }
 
 export type RecentBulkSearch = {
@@ -536,7 +535,7 @@ export function parseRecentBulkSearches(data: unknown): RecentBulkSearch[] {
                   ? "Terminé avec erreurs"
                   : "Échoué",
         outputType,
-        fileName: fileName || `Traitement ${jobId.slice(0, 8)}`,
+        fileName: fileName || "Traitement",
         createdAt,
         itemCount,
       },

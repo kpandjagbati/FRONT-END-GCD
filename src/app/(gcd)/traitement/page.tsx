@@ -14,7 +14,7 @@ import {
 } from "@/components/icons";
 import { ExcelButton, PdfRedButton, WordButton } from "@/components/ActionButtons";
 import YasLoadingOverlay from "@/components/YasLoadingOverlay";
-import { saveBlob } from "@/lib/downloads";
+import { saveBlob, saveBlobsInBrowser } from "@/lib/downloads";
 import {
   isDownloadReady,
   jobsFromBulk,
@@ -86,7 +86,30 @@ function csvDelimiter(headerLine: string) {
   return headerLine.includes(";") && headerLine.split(";").length >= headerLine.split(",").length ? ";" : ",";
 }
 
-/** Normalise date_debut / date_fin en YYYY-MM-DD (format API). */
+/** Excel transforme souvent IMEI/IMSI en 8,69E+13 — on rétablit les chiffres. */
+function expandExcelNumber(raw: string) {
+  const value = raw.trim().replace(/\s/g, "").replace(",", ".");
+  if (!/^-?\d+(\.\d+)?[eE][+-]?\d+$/.test(value)) return raw.trim();
+  const [mantissaPart, expPart] = value.toLowerCase().split("e");
+  const exp = Number(expPart);
+  if (!Number.isFinite(exp)) return raw.trim();
+  const negative = mantissaPart.startsWith("-");
+  const mantissa = (negative ? mantissaPart.slice(1) : mantissaPart).replace(".", "");
+  const dot = mantissaPart.replace("-", "").indexOf(".");
+  const decimals = dot >= 0 ? mantissaPart.replace("-", "").length - dot - 1 : 0;
+  const shift = exp - decimals;
+  let digits = mantissa.replace(/^0+/, "") || "0";
+  if (shift >= 0) {
+    digits = digits + "0".repeat(shift);
+  } else {
+    const cut = digits.length + shift;
+    if (cut <= 0) return raw.trim();
+    digits = digits.slice(0, cut);
+  }
+  return `${negative ? "-" : ""}${digits}`;
+}
+
+/** Normalise dates + valeurs numériques Excel (IMEI/IMSI) pour l'API. */
 function normalizeCsvForUpload(text: string) {
   const lines = text
     .replace(/^\uFEFF/, "")
@@ -96,13 +119,17 @@ function normalizeCsvForUpload(text: string) {
   if (lines.length < 2) return text;
   const delimiter = csvDelimiter(lines[0]);
   const header = lines[0].split(delimiter).map((cell) => cell.trim().toLowerCase());
+  const valueIndex = header.findIndex((cell) => cell === "valeur" || cell === "value");
   const startIndex = header.findIndex((cell) => cell === "date_debut" || cell === "datedebut");
   const endIndex = header.findIndex((cell) => cell === "date_fin" || cell === "datefin");
-  if (startIndex < 0 && endIndex < 0) return text;
+  if (valueIndex < 0 && startIndex < 0 && endIndex < 0) return text;
 
   const normalized = [lines[0]];
   for (const line of lines.slice(1)) {
     const cells = line.split(delimiter).map((cell) => cell.trim());
+    if (valueIndex >= 0 && cells[valueIndex]) {
+      cells[valueIndex] = expandExcelNumber(cells[valueIndex]);
+    }
     for (const index of [startIndex, endIndex]) {
       if (index < 0 || !cells[index]) continue;
       const iso = frenchDateToIso(cells[index]) || cells[index];
@@ -137,7 +164,7 @@ function rowsFromCsv(text: string): TreatmentJob[] {
         id: `${type}-${index}`,
         itemId: "",
         type,
-        valeur: valueIndex >= 0 ? cells[valueIndex] ?? "" : "",
+        valeur: valueIndex >= 0 ? expandExcelNumber(cells[valueIndex] ?? "") : "",
         dateDebut: frenchDateToIso(rawStart) || rawStart,
         dateFin: frenchDateToIso(rawEnd) || rawEnd,
         status: "waiting" as const,
@@ -363,7 +390,7 @@ export default function TraitementPage() {
     }
   }
 
-  /** Fichiers un par un (pas de ZIP), via ?file=document|password. */
+  /** Bouton jaune : chaque fichier séparément dans la barre de téléchargements du navigateur. */
   async function downloadAllAsFiles(list: TreatmentJob[]) {
     if (!bulkJobId || downloading) return;
     const ready = list.filter((job) => isDownloadReady(job.status) && job.itemId);
@@ -372,34 +399,32 @@ export default function TraitementPage() {
     setError(null);
     try {
       const extension = outputType === "excel" ? "xlsx" : outputType === "word" ? "docx" : "pdf";
-      for (let index = 0; index < ready.length; index += 1) {
-        const job = ready[index];
+      const files: { filename: string; blob: Blob }[] = [];
+      for (const job of ready) {
         const document = await downloadBulkSearchItem(bulkJobId, job.itemId, "document");
-        const fileName =
-          job.fileName || document.filename || `traitement-${job.itemId}.${extension}`;
-
-        saveBlob(fileName, document.blob);
+        files.push({
+          filename: job.fileName || document.filename || `traitement-${job.itemId}.${extension}`,
+          blob: document.blob,
+        });
 
         if (outputType === "pdf") {
           try {
             const password = await downloadBulkSearchItem(bulkJobId, job.itemId, "password");
             if (password.blob.size > 0) {
-              const pwdName =
-                (password.filename && /\.txt$/i.test(password.filename) ? password.filename : "") ||
-                job.passwordFileName ||
-                `Password-${job.valeur || job.itemId}.txt`;
-              await new Promise((resolve) => window.setTimeout(resolve, 350));
-              saveBlob(pwdName, password.blob);
+              files.push({
+                filename:
+                  (password.filename && /\.txt$/i.test(password.filename) ? password.filename : "") ||
+                  job.passwordFileName ||
+                  `Password-${job.valeur || job.itemId}.txt`,
+                blob: password.blob,
+              });
             }
           } catch {
-            // document déjà sauvé
+            // document déjà pris
           }
         }
-
-        if (index < ready.length - 1) {
-          await new Promise((resolve) => window.setTimeout(resolve, 500));
-        }
       }
+      await saveBlobsInBrowser(files);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Le téléchargement a échoué.");
     } finally {
