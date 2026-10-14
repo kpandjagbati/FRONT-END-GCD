@@ -1,7 +1,13 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { getSessionDisplayName, getSessionUsername, subscribeSession } from "@/lib/session";
+import {
+  getSessionDisplayName,
+  getSessionUser,
+  getSessionUsername,
+  subscribeSession,
+  type SessionUser,
+} from "@/lib/session";
 
 function subscribeNoop() {
   return () => {};
@@ -21,4 +27,10 @@ export function useSessionDisplayName() {
 
 export function useSessionUsername() {
   return useSyncExternalStore(subscribeSession, getSessionUsername, () => "");
+}
+
+const SERVER_USER: SessionUser | null = null;
+
+export function useSessionUser() {
+  return useSyncExternalStore(subscribeSession, getSessionUser, () => SERVER_USER);
 }

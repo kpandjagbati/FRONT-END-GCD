@@ -2,8 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { IconChevronDown, IconLogout } from "@/components/icons";
-import { getSessionEmail, logoutSession } from "@/lib/session";
-import { useIsClient, useSessionDisplayName, useSessionUsername } from "@/lib/use-client";
+import { loginUser } from "@/lib/gcd-api";
+import {
+  getSessionEmail,
+  getSessionPassword,
+  getSessionUsername,
+  logoutSession,
+  saveSessionToken,
+  saveSessionUser,
+} from "@/lib/session";
+import { useIsClient, useSessionDisplayName, useSessionUser, useSessionUsername } from "@/lib/use-client";
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -44,9 +52,34 @@ export default function ProfileMenu() {
   const [open, setOpen] = useState(false);
   const isClient = useIsClient();
   const username = useSessionUsername();
+  const user = useSessionUser();
   const sessionName = useSessionDisplayName() || username;
   const displayName = isClient && sessionName ? sessionName : "Compte";
   const email = isClient ? getSessionEmail() : "";
+  const identifier = isClient ? user?.username || username : "";
+  const lastConnection = isClient ? user?.lastConnection || "—" : "—";
+  const needsProfile = isClient && Boolean(username) && (!user?.email || !user?.lastConnection);
+
+  useEffect(() => {
+    if (!needsProfile) return;
+    let cancelled = false;
+    void (async () => {
+      const login = getSessionUsername().trim();
+      const password = getSessionPassword();
+      if (!login || !password) return;
+      try {
+        const { token, user: profile } = await loginUser(login, password);
+        if (cancelled || !profile) return;
+        saveSessionToken(token);
+        saveSessionUser(profile);
+      } catch {
+        // Profil optionnel : ne pas déconnecter si le refresh échoue.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [needsProfile]);
 
   useEffect(() => {
     if (!open) return;
@@ -112,7 +145,7 @@ export default function ProfileMenu() {
               <div className="min-w-0">
                 <p className="text-[11px] font-medium text-yas-yellow">Profil Yas</p>
                 <p className="mt-0.5 truncate text-base font-bold">{displayName}</p>
-                <p className="truncate text-xs text-white/70">{email}</p>
+                <p className="truncate text-xs text-white/70">{email || "—"}</p>
               </div>
             </div>
           </div>
@@ -120,19 +153,25 @@ export default function ProfileMenu() {
             <dl className="space-y-2.5 text-sm">
               <div className="flex justify-between gap-3">
                 <dt className="text-neutral-400">Identifiant</dt>
-                <dd className="truncate font-semibold text-neutral-800">{username || displayName}</dd>
+                <dd className="truncate font-semibold text-neutral-800">{identifier || "—"}</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-neutral-400">Nom d&apos;utilisateur</dt>
                 <dd className="truncate font-semibold text-neutral-800">{displayName}</dd>
               </div>
               <div className="flex justify-between gap-3">
+                <dt className="text-neutral-400">Email</dt>
+                <dd className="truncate font-semibold text-neutral-800" title={email || undefined}>
+                  {email || "—"}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-3">
                 <dt className="text-neutral-400">Application</dt>
                 <dd className="font-semibold text-neutral-800">GetCallDetail</dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-neutral-400">Rôle</dt>
-                <dd className="font-semibold text-neutral-800">Utilisateur</dd>
+                <dt className="text-neutral-400">Dernière connexion</dt>
+                <dd className="truncate font-semibold text-neutral-800">{lastConnection}</dd>
               </div>
             </dl>
             <button

@@ -18,6 +18,7 @@ import {
   parseBulkSearchItems,
   readPasswordFromBlob,
 } from "@/lib/gcd-api";
+import { frenchDateToIso } from "@/lib/format-date";
 import { useIsClient } from "@/lib/use-client";
 
 const CSV_COLUMNS = ["type", "valeur", "date_debut", "date_fin"] as const;
@@ -77,28 +78,73 @@ function typeLabel(type: string) {
   return TYPE_LABELS[type.toLowerCase()] ?? type.toUpperCase();
 }
 
+function statusLabel(status: TreatmentJob["status"]) {
+  if (status === "ready") return "Terminé";
+  if (status === "error") return "Erreur";
+  return "En cours";
+}
+
+function statusClassName(status: TreatmentJob["status"]) {
+  if (status === "ready") return "text-[#1f7a46]";
+  if (status === "error") return "text-red-500";
+  return "text-amber-600";
+}
+
+function csvDelimiter(headerLine: string) {
+  return headerLine.includes(";") && headerLine.split(";").length >= headerLine.split(",").length ? ";" : ",";
+}
+
+/** Normalise date_debut / date_fin en YYYY-MM-DD (format API). */
+function normalizeCsvForUpload(text: string) {
+  const lines = text
+    .replace(/^\uFEFF/, "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length < 2) return text;
+  const delimiter = csvDelimiter(lines[0]);
+  const header = lines[0].split(delimiter).map((cell) => cell.trim().toLowerCase());
+  const startIndex = header.findIndex((cell) => cell === "date_debut" || cell === "datedebut");
+  const endIndex = header.findIndex((cell) => cell === "date_fin" || cell === "datefin");
+  if (startIndex < 0 && endIndex < 0) return text;
+
+  const normalized = [lines[0]];
+  for (const line of lines.slice(1)) {
+    const cells = line.split(delimiter).map((cell) => cell.trim());
+    for (const index of [startIndex, endIndex]) {
+      if (index < 0 || !cells[index]) continue;
+      const iso = frenchDateToIso(cells[index]) || cells[index];
+      cells[index] = iso;
+    }
+    normalized.push(cells.join(delimiter));
+  }
+  return `${normalized.join("\n")}\n`;
+}
+
 function rowsFromCsv(text: string): TreatmentJob[] {
   const lines = text
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
   if (lines.length < 2) return [];
-  const header = lines[0].split(/[;,]/).map((cell) => cell.trim().toLowerCase().replace(/^\uFEFF/, ""));
+  const delimiter = csvDelimiter(lines[0]);
+  const header = lines[0].split(delimiter).map((cell) => cell.trim().toLowerCase().replace(/^\uFEFF/, ""));
   const typeIndex = header.indexOf("type");
   const valueIndex = header.findIndex((cell) => cell === "valeur" || cell === "value");
   const startIndex = header.findIndex((cell) => cell === "date_debut" || cell === "datedebut");
   if (typeIndex < 0) return [];
   return lines.slice(1).flatMap((line, index) => {
-    const cells = line.split(/[;,]/).map((cell) => cell.trim());
+    const cells = line.split(delimiter).map((cell) => cell.trim());
     const type = cells[typeIndex]?.toLowerCase();
     if (!type) return [];
+    const rawDate = startIndex >= 0 ? cells[startIndex] ?? "" : "";
     return [
       {
         id: `${type}-${index}`,
         itemId: "",
         type,
         valeur: valueIndex >= 0 ? cells[valueIndex] ?? "" : "",
-        dateDebut: startIndex >= 0 ? cells[startIndex] ?? "" : "",
+        dateDebut: frenchDateToIso(rawDate) || rawDate,
         status: "pending" as const,
       },
     ];
@@ -209,11 +255,17 @@ export default function TraitementPage() {
     setNotice(false);
     setError(null);
     try {
-      const rows = rowsFromCsv(await file.text());
+      const originalText = await file.text();
+      const uploadText = normalizeCsvForUpload(originalText);
+      const rows = rowsFromCsv(uploadText);
+      if (rows.length === 0) {
+        throw new Error("Le CSV ne contient aucune ligne valide (colonnes type, valeur, dates).");
+      }
       setJobs(rows);
       setStarted(true);
       setBulkJobId(null);
-      const created = await bulkSearch(file);
+      const uploadFile = new File([uploadText], file.name, { type: "text/csv" });
+      const created = await bulkSearch(uploadFile);
       const jobId = extractBulkJobId(created);
       if (!jobId) {
         // Certains backends renvoient déjà le détail dans la création.
@@ -584,17 +636,20 @@ export default function TraitementPage() {
                     ref={tableScrollRef}
                     className="h-full overflow-auto rounded-xl border border-neutral-100"
                   >
-                    <table className="w-full min-w-[30rem] text-left text-xs sm:min-w-[36rem] sm:text-sm">
+                    <table className="w-full min-w-[34rem] text-left text-xs sm:min-w-[42rem] sm:text-sm">
                       <thead className="sticky top-0 z-[1] bg-yas-navy text-[10px] uppercase tracking-wide text-white sm:text-xs">
                         <tr>
                           <th className="px-2.5 py-2.5 font-semibold sm:px-4 sm:py-3">Type</th>
                           <th className="px-2.5 py-2.5 font-semibold sm:px-4 sm:py-3">Valeur</th>
                           <th className="px-2.5 py-2.5 font-semibold sm:px-4 sm:py-3">Date de début</th>
+                          <th className="px-2.5 py-2.5 font-semibold sm:px-4 sm:py-3">Statut</th>
                           <th className="px-2.5 py-2.5 font-semibold sm:px-4 sm:py-3">PDF</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {shown.map((job) => (
+                        {shown.map((job) => {
+                          const pdfEnabled = job.status === "ready" && Boolean(job.itemId);
+                          return (
                           <tr key={job.id} className="border-t border-neutral-100 bg-white">
                             <td className="px-2.5 py-2.5 font-semibold text-yas-navy sm:px-4 sm:py-3">
                               {typeLabel(job.type)}
@@ -606,23 +661,23 @@ export default function TraitementPage() {
                               {job.dateDebut || "—"}
                             </td>
                             <td className="px-2.5 py-2.5 sm:px-4 sm:py-3">
-                              {job.status === "error" ? (
-                                <span className="text-xs font-semibold text-red-500">Erreur</span>
-                              ) : job.status === "ready" ? (
-                                <PdfRedButton
-                                  disabled={!preview && downloading === job.id}
-                                  loading={!preview && downloading === job.id}
-                                  onClick={() => {
-                                    if (preview) return;
-                                    void downloadTreatment(job);
-                                  }}
-                                />
-                              ) : (
-                                <span className="text-xs font-semibold text-neutral-400">En cours</span>
-                              )}
+                              <span className={`text-xs font-semibold ${statusClassName(job.status)}`}>
+                                {statusLabel(job.status)}
+                              </span>
+                            </td>
+                            <td className="px-2.5 py-2.5 sm:px-4 sm:py-3">
+                              <PdfRedButton
+                                disabled={preview || !pdfEnabled || downloading === job.id}
+                                loading={!preview && pdfEnabled && downloading === job.id}
+                                onClick={() => {
+                                  if (preview || !pdfEnabled) return;
+                                  void downloadTreatment(job);
+                                }}
+                              />
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -644,27 +699,35 @@ export default function TraitementPage() {
                 </div>
 
                 <div className="shrink-0 border-t border-neutral-100 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-6 sm:pb-5">
-                  {allReady || preview ? (
+                  {shown.length > 0 ? (
                     <div className="flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                       <button
                         type="button"
-                        disabled={!preview && (downloading === "all-zip" || downloading === "all-files")}
+                        disabled={
+                          preview
+                            ? false
+                            : !allReady || downloading === "all-zip" || downloading === "all-files"
+                        }
                         onClick={() => {
-                          if (preview) return;
+                          if (preview || !allReady) return;
                           void downloadAllAsZip(shown);
                         }}
-                        className="btn h-10 min-h-10 rounded-xl border-none bg-yas-navy px-5 font-semibold text-white hover:bg-[#012d66] disabled:bg-neutral-200 disabled:text-neutral-400"
+                        className="btn h-10 min-h-10 rounded-xl border-none bg-yas-navy px-5 font-semibold text-white hover:bg-[#012d66] disabled:bg-neutral-200 disabled:text-neutral-400 disabled:hover:bg-neutral-200"
                       >
                         {downloading === "all-zip" ? "Téléchargement…" : "Télécharger tout (.zip)"}
                       </button>
                       <button
                         type="button"
-                        disabled={!preview && (downloading === "all-zip" || downloading === "all-files")}
+                        disabled={
+                          preview
+                            ? false
+                            : !allReady || downloading === "all-zip" || downloading === "all-files"
+                        }
                         onClick={() => {
-                          if (preview) return;
+                          if (preview || !allReady) return;
                           void downloadAllAsFiles(shown);
                         }}
-                        className="btn h-10 min-h-10 rounded-xl border-none bg-yas-yellow px-5 font-semibold text-yas-navy hover:bg-[#f0ce00] disabled:bg-neutral-200 disabled:text-neutral-400"
+                        className="btn h-10 min-h-10 rounded-xl border-none bg-yas-yellow px-5 font-semibold text-yas-navy hover:bg-[#f0ce00] disabled:bg-neutral-200 disabled:text-neutral-400 disabled:hover:bg-neutral-200"
                       >
                         {downloading === "all-files" ? "Téléchargement…" : "Télécharger tout"}
                       </button>

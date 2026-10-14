@@ -5,6 +5,8 @@ import {
   getSessionToken,
   getSessionUsername,
   saveSessionToken,
+  saveSessionUser,
+  type SessionUser,
 } from "@/lib/session";
 
 const ROOT = "/api/gcd";
@@ -71,6 +73,48 @@ function readToken(data: unknown) {
   return "";
 }
 
+function asObject(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function readLoginUser(data: unknown): SessionUser | null {
+  const root = asObject(data);
+  if (!root) return null;
+  const nestedData = asObject(root.data);
+  const raw =
+    asObject(root.user) ||
+    asObject(nestedData?.user) ||
+    (typeof root.username === "string" || typeof root.email === "string" ? root : null) ||
+    (nestedData && (typeof nestedData.username === "string" || typeof nestedData.email === "string")
+      ? nestedData
+      : null);
+  if (!raw) return null;
+  const username = typeof raw.username === "string" ? raw.username.trim() : "";
+  if (!username) return null;
+  const firstname =
+    (typeof raw.firstname === "string" && raw.firstname.trim()) ||
+    (typeof raw.firstName === "string" && raw.firstName.trim()) ||
+    "";
+  const lastname =
+    (typeof raw.lastname === "string" && raw.lastname.trim()) ||
+    (typeof raw.lastName === "string" && raw.lastName.trim()) ||
+    "";
+  const lastConnection =
+    (typeof raw.lastConnection === "string" && raw.lastConnection.trim()) ||
+    (typeof raw.last_connection === "string" && raw.last_connection.trim()) ||
+    "";
+  return {
+    id: typeof raw.id === "number" ? raw.id : undefined,
+    username,
+    email: typeof raw.email === "string" ? raw.email.trim() : "",
+    firstname,
+    lastname,
+    lastConnection,
+  };
+}
+
 function errorFromPayload(response: Response, payload: Envelope<unknown> | null, raw: unknown) {
   const envelope = payload?.status?.description || payload?.status?.message;
   if (envelope) return frenchMessage(envelope);
@@ -122,8 +166,9 @@ async function refreshSessionToken() {
     const password = getSessionPassword();
     if (!username || !password) return false;
     try {
-      const token = await loginUser(username, password);
+      const { token, user } = await loginUser(username, password);
       saveSessionToken(token);
+      if (user) saveSessionUser(user);
       return true;
     } catch {
       return false;
@@ -184,7 +229,7 @@ export async function loginUser(username: string, password: string) {
   );
   const token = readToken(data);
   if (!token) throw new ApiError("Le serveur n'a pas renvoyé de jeton de connexion.");
-  return token;
+  return { token, user: readLoginUser(data) };
 }
 
 const SEARCH_BY: Record<string, string> = {

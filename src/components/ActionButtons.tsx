@@ -28,15 +28,19 @@ export function ActionButton({
   loading?: boolean;
   onClick?: () => void;
 }>) {
+  const inactive = Boolean(disabled && !loading);
+  const tone =
+    inactive && variant === "pdf-red"
+      ? "bg-[#f0a8ab] text-white hover:bg-[#f0a8ab] cursor-not-allowed shadow-none"
+      : `${styles[variant]} ${inactive ? "opacity-60" : ""}`;
+
   return (
     <button
       type="button"
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       onClick={onClick}
-      className={`btn btn-sm h-9 min-h-9 max-w-full shrink-0 gap-1.5 px-2.5 text-xs sm:px-5 sm:text-sm border-none rounded-xl font-semibold shadow-sm disabled:opacity-100 ${styles[variant]} ${
-        disabled && !loading ? "opacity-60" : ""
-      }`}
+      className={`btn btn-sm h-9 min-h-9 max-w-full shrink-0 gap-1.5 px-2.5 text-xs sm:px-5 sm:text-sm border-none rounded-xl font-semibold shadow-sm disabled:opacity-100 ${tone}`}
     >
       {children}
     </button>

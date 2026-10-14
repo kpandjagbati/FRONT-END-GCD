@@ -6,7 +6,7 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { IconEye, IconEyeOff, IconLock, IconUser } from "@/components/icons";
 import { loginUser } from "@/lib/gcd-api";
-import { saveSession, saveSessionToken } from "@/lib/session";
+import { saveSession, saveSessionToken, saveSessionUser } from "@/lib/session";
 
 gsap.registerPlugin(useGSAP);
 
@@ -51,9 +51,10 @@ export default function LoginPage() {
     }
     setFormError(null);
     try {
-      const token = await loginUser(username, password);
+      const { token, user } = await loginUser(username, password);
       saveSession(username, password);
       saveSessionToken(token);
+      if (user) saveSessionUser(user);
       router.push("/accueil");
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Connexion impossible.");
