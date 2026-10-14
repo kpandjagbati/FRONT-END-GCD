@@ -27,11 +27,17 @@ function frenchMessage(message: string) {
   if (/not authorized to use this service/i.test(text)) {
     return "Vous n'êtes pas autorisé à utiliser ce service.";
   }
+  if (/access denied|forbidden/i.test(text)) {
+    return "Session expirée ou jeton invalide. Reconnectez-vous, puis réessayez.";
+  }
   if (/bad username or password/i.test(text)) {
     return "Nom d'utilisateur ou mot de passe incorrect.";
   }
-  if (/n'a pas répondu correctement|socket hang up/i.test(text)) {
-    return "Le serveur a coupé la connexion avant de répondre.";
+  if (/Impossible de joindre l'API GCD/i.test(text)) {
+    return text;
+  }
+  if (/n'a pas répondu correctement|socket hang up|ENOTFOUND|ECONNREFUSED|fetch failed/i.test(text)) {
+    return "Impossible de joindre l'API GCD (réseau/VPN/DNS). Vérifiez la connexion VPN puis réessayez.";
   }
   if (/^not found$/i.test(text)) {
     return "Aucun login trouvé pour ce DN.";
@@ -92,8 +98,15 @@ function errorFromPayload(response: Response, payload: Envelope<unknown> | null,
 function isAuthRejected(response: Response, payload: Envelope<unknown> | null, raw: unknown) {
   if (response.status !== 401 && response.status !== 403) return false;
   const envelopeCode = payload?.status?.code;
-  // Business envelope (ex. Not found) arrives as HTTP 200 — leave those alone.
-  if (typeof envelopeCode === "number") return false;
+  const envelopeMessage = `${payload?.status?.message ?? ""} ${payload?.status?.description ?? ""}`;
+  // 401/403 métier "Access Denied" / FORBIDDEN → tenter un refresh de session.
+  if (typeof envelopeCode === "number") {
+    return (
+      envelopeCode === 401 ||
+      envelopeCode === 403 ||
+      /access denied|forbidden|unauthorized/i.test(envelopeMessage)
+    );
+  }
   if (!raw) return true;
   if (typeof raw === "object") {
     const record = raw as Record<string, unknown>;
@@ -300,6 +313,25 @@ export async function downloadFile(filename: string, body: unknown, folder = dow
   return response.blob();
 }
 
+/**
+ * Comme Appels (downloadNamedFile) : le .txt Password est souvent sous /pdf, parfois /txt.
+ * Ignore les réponses vides.
+ */
+export async function downloadPasswordFile(filename: string) {
+  const safeName = filename.split("/").pop() || filename;
+  if (!safeName) throw new ApiError("Nom de fichier mot de passe manquant.");
+  // Ordre Appels : dossier pdf d'abord.
+  for (const folder of ["pdf", "txt"] as const) {
+    try {
+      const blob = await downloadFile(safeName, {}, folder);
+      if (blob.size > 0) return { filename: safeName, blob };
+    } catch {
+      // essayer le dossier suivant
+    }
+  }
+  throw new ApiError("Le fichier mot de passe est introuvable ou vide.");
+}
+
 export function downloadNamedFile(filename: string, input: CallSearch) {
   const folder = input.outputType === "excel" || input.outputType === "word" ? input.outputType : "pdf";
   return downloadFile(
@@ -372,7 +404,247 @@ export function querySubscriber(msisdn: string) {
 export function bulkSearch(file: File) {
   const body = new FormData();
   body.append("file", file);
-  return gcdFetch<unknown>("/get-calls-details/bulk-search", { method: "POST", body });
+  return gcdFetch<unknown>("/get-calls-details/bulk-search/v2", { method: "POST", body });
+}
+
+export function getBulkSearch(jobId: string) {
+  const id = encodeURIComponent(jobId.trim());
+  return gcdFetch<unknown>(`/get-calls-details/bulk-search/v2/${id}`);
+}
+
+async function bulkDownloadBlob(path: string) {
+  const token = getSessionToken();
+  if (!token) throw new ApiError("Connectez-vous pour utiliser le service.");
+  const response = await fetch(`${ROOT}${path}`, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}`, "x-gcd-token": token },
+  });
+  if (!response.ok) {
+    const description = await readDownloadError(response);
+    throw new ApiError(description || `Le téléchargement a échoué (${response.status}).`);
+  }
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const matched =
+    disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1] ||
+    disposition.match(/filename="?([^";]+)"?/i)?.[1];
+  const filename = matched ? decodeURIComponent(matched.trim()) : "traitement.zip";
+  return { blob: await response.blob(), filename };
+}
+
+export function downloadBulkSearch(jobId: string) {
+  const id = encodeURIComponent(jobId.trim());
+  return bulkDownloadBlob(`/get-calls-details/bulk-search/v2/${id}/download`);
+}
+
+export type BulkItemFileKind = "document" | "password";
+
+/** Arif : GET .../items/{itemId}/download?file=document|password */
+export function downloadBulkSearchItem(
+  jobId: string,
+  itemId: string | number,
+  file: BulkItemFileKind = "document",
+) {
+  const id = encodeURIComponent(jobId.trim());
+  const item = encodeURIComponent(String(itemId).trim());
+  if (!item) throw new ApiError("Identifiant d'item invalide pour le téléchargement.");
+  const kind = file === "password" ? "password" : "document";
+  return bulkDownloadBlob(`/get-calls-details/bulk-search/v2/${id}/items/${item}/download?file=${kind}`);
+}
+
+const bulkZipCache = new Map<string, Promise<{ name: string; data: Uint8Array }[]>>();
+
+export function clearBulkZipCache(jobId?: string) {
+  if (jobId) bulkZipCache.delete(jobId.trim());
+  else bulkZipCache.clear();
+}
+
+async function loadBulkZipEntries(jobId: string) {
+  const key = jobId.trim();
+  const cached = bulkZipCache.get(key);
+  if (cached) return cached;
+  const pending = (async () => {
+    const { unzipSync } = await import("fflate");
+    const { blob } = await downloadBulkSearch(key);
+    const files = unzipSync(new Uint8Array(await blob.arrayBuffer()));
+    return Object.entries(files).map(([path, data]) => ({
+      name: path.split("/").pop() || path,
+      data,
+    }));
+  })();
+  bulkZipCache.set(key, pending);
+  try {
+    return await pending;
+  } catch (error) {
+    bulkZipCache.delete(key);
+    throw error;
+  }
+}
+
+function zipEntryBlob(data: Uint8Array) {
+  // Copie pour éviter un ArrayBuffer détaché / Blob vide selon le navigateur.
+  return new Blob([new Uint8Array(data)], { type: "application/octet-stream" });
+}
+
+/** Lit « Mot de passe d'ouverture : xxx » dans le .txt Yas. */
+export async function readPasswordFromBlob(blob: Blob) {
+  const text = await blob.text();
+  const match = text.match(/Mot de passe d['’]ouverture\s*:\s*(\S+)/i);
+  return match?.[1]?.trim() || "";
+}
+
+/** PDF + .txt Password du même ZIP (équivalent Appels : couple toujours assorti). */
+export async function extractBulkItemPair(
+  jobId: string,
+  hints: { fileName?: string; passwordFileName?: string; valeur?: string; type?: string },
+) {
+  const entries = await loadBulkZipEntries(jobId);
+  const pdfHint = hints.fileName?.split("/").pop()?.toLowerCase() || "";
+  const pwdHint =
+    (hints.passwordFileName || (hints.fileName ? passwordFileNameFromPdf(hints.fileName) : ""))
+      .split("/")
+      .pop()
+      ?.toLowerCase() || "";
+  const valeur = (hints.valeur || "").trim().toLowerCase();
+  const type = (hints.type || "").trim().toLowerCase();
+
+  let pdf = pdfHint ? entries.find((entry) => entry.name.toLowerCase() === pdfHint) : undefined;
+  if (!pdf && valeur) {
+    pdf = entries.find(
+      (entry) =>
+        /\.pdf$/i.test(entry.name) &&
+        entry.name.toLowerCase().includes(valeur) &&
+        (!type || entry.name.toLowerCase().includes(type)),
+    );
+  }
+
+  let password = pwdHint ? entries.find((entry) => entry.name.toLowerCase() === pwdHint) : undefined;
+  if (!password && pdf) {
+    const derived = passwordFileNameFromPdf(pdf.name).toLowerCase();
+    if (derived) password = entries.find((entry) => entry.name.toLowerCase() === derived);
+  }
+  if (!password && valeur) {
+    password = entries.find(
+      (entry) =>
+        /\.txt$/i.test(entry.name) &&
+        /password/i.test(entry.name) &&
+        entry.name.toLowerCase().includes(valeur),
+    );
+  }
+
+  if (!pdf?.data?.length) return null;
+  if (!password?.data?.length) {
+    return { pdf: { filename: pdf.name, blob: zipEntryBlob(pdf.data) }, password: null };
+  }
+  return {
+    pdf: { filename: pdf.name, blob: zipEntryBlob(pdf.data) },
+    password: { filename: password.name, blob: zipEntryBlob(password.data) },
+  };
+}
+
+export function extractBulkJobId(data: unknown): string {
+  if (typeof data === "string" && data.trim()) return data.trim().replace(/^'+|'+$/g, "");
+  if (!data || typeof data !== "object") return "";
+  const record = data as Record<string, unknown>;
+  for (const key of ["reference", "id", "jobId", "bulkSearchId", "bulkId", "uuid", "requestId"]) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) return value.trim().replace(/^'+|'+$/g, "");
+  }
+  if ("data" in record) return extractBulkJobId(record.data);
+  return "";
+}
+
+export type BulkSearchItem = {
+  itemId: string;
+  type: string;
+  valeur: string;
+  dateDebut: string;
+  status: "pending" | "ready" | "error";
+  fileName?: string;
+  passwordFileName?: string;
+};
+
+/** Ex. L2-msisdn-228…pdf → L2-Password-228….txt (convention API Yas). */
+export function passwordFileNameFromPdf(pdfName: string) {
+  const base = pdfName.split("/").pop()?.trim() || "";
+  if (!base || !/\.pdf$/i.test(base)) return "";
+  const swapped = base.replace(/-(msisdn|imei|imsi)-/i, "-Password-").replace(/\.pdf$/i, ".txt");
+  return swapped !== base.replace(/\.pdf$/i, ".txt") ? swapped : "";
+}
+
+function bulkItemStatus(raw: string): BulkSearchItem["status"] {
+  const value = raw.trim().toLowerCase();
+  if (!value) return "pending";
+  if (/fail|error|ko|reject/.test(value)) return "error";
+  if (/ready|done|success|complete|ok|finish|generated|available/.test(value)) return "ready";
+  if (/pend|wait|progress|run|process|queue|start/.test(value)) return "pending";
+  return "pending";
+}
+
+function bulkItemsArray(data: unknown): Record<string, unknown>[] {
+  if (Array.isArray(data)) return objectRows(data);
+  if (!data || typeof data !== "object") return [];
+  const record = data as Record<string, unknown>;
+  for (const key of ["items", "results", "details", "rows", "bulkSearchItems", "data"]) {
+    const value = record[key];
+    if (Array.isArray(value) && value.length > 0) {
+      const rows = objectRows(value);
+      if (rows.length > 0) return rows;
+    }
+  }
+  return asRecords(data);
+}
+
+export function parseBulkSearchItems(data: unknown): BulkSearchItem[] {
+  const rows = bulkItemsArray(data);
+  if (rows.length === 0) return [];
+
+  return rows.map((row, index) => {
+    const flat = flattenRow(row);
+    const statusRaw =
+      field(flat, ["status", "state", "itemStatus", "processingStatus"]) ||
+      (field(flat, ["pdfFileName", "fileName", "filename"]) ? "ready" : "pending");
+    // itemId = id API (nombre ou chaîne, ex. 12dcsampt…-526db)
+    const itemIdRaw = field(flat, ["id", "itemId", "item_id"]).trim();
+    const fileName = field(flat, ["pdfFileName", "fileName", "filename", "fichier", "name"]) || undefined;
+    const passwordFileName =
+      field(flat, [
+        "passwordFileName",
+        "passwordFilename",
+        "passwordFile",
+        "fichier_mot_de_passe",
+        "passwordTxt",
+      ]) ||
+      (fileName ? passwordFileNameFromPdf(fileName) : "") ||
+      undefined;
+    return {
+      itemId: itemIdRaw || String(index + 1),
+      type: field(flat, ["type", "searchType", "keywordSearchBy"]).toLowerCase(),
+      valeur: field(flat, ["valeur", "value", "searchValue", "msisdn", "imei", "imsi"]),
+      dateDebut: field(flat, ["dateDebut", "date_debut", "startDate", "start"]),
+      status: bulkItemStatus(statusRaw),
+      fileName,
+      passwordFileName: passwordFileName || undefined,
+    };
+  });
+}
+
+export function isBulkSearchComplete(data: unknown) {
+  if (!data || typeof data !== "object") return false;
+  const record = data as Record<string, unknown>;
+  const statusValue = record.status ?? record.state ?? record.jobStatus ?? record.processingStatus ?? "";
+  const status =
+    typeof statusValue === "string"
+      ? statusValue.toLowerCase()
+      : typeof statusValue === "object" && statusValue
+        ? String((statusValue as Record<string, unknown>).message ?? (statusValue as Record<string, unknown>).code ?? "").toLowerCase()
+        : "";
+  if (/fail|error/.test(status) && !/success/.test(status)) return true;
+  if (/ready|done|success|complete|finish/.test(status)) return true;
+  if (record.filesAvailable === true) return true;
+  const progress = Number(record.progress);
+  if (Number.isFinite(progress) && progress >= 100) return true;
+  const items = parseBulkSearchItems(data);
+  return items.length > 0 && items.every((item) => item.status === "ready" || item.status === "error");
 }
 
 function objectRows(value: unknown): Record<string, unknown>[] {

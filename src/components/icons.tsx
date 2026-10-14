@@ -204,14 +204,14 @@ export function IconChip({ className }: Readonly<IconProps>) {
     </svg>
   );
 }
-
+ 
 export function IconSim({ className }: Readonly<IconProps>) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
       <path d="M7 4.5h7.5L19 9v10.5a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-14a1 1 0 0 1 1-1z" />
       <rect x="9" y="12" width="6" height="5" rx="0.8" />
       <path d="M10 8.5h4" />
-    </svg>
+    </svg> 
   );
 }
 
