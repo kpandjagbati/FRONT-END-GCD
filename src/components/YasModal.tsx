@@ -62,7 +62,7 @@ export default function YasModal({
           <IconClose className="size-5" />
         </button>
         <div
-          className={`flex min-h-0 flex-1 flex-col p-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-5 sm:pb-6 ${
+          className={`flex min-h-0 w-full min-w-0 flex-1 flex-col p-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-4 sm:pb-5 ${
             wide ? "overflow-hidden" : "md:p-8 sm:pb-8"
           }`}
         >
@@ -70,7 +70,7 @@ export default function YasModal({
             {title}
           </h2>
           <div className="mt-3 h-1.5 w-16 shrink-0 rounded-full bg-yas-yellow" />
-          <div className={`mt-6 min-h-0 ${wide ? "flex-1 overflow-auto overscroll-contain" : ""}`}>
+          <div className={`mt-4 min-h-0 w-full min-w-0 ${wide ? "flex-1 overflow-auto overscroll-contain" : ""}`}>
             {children}
           </div>
         </div>

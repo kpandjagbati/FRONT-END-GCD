@@ -112,8 +112,21 @@ function toCallRow(row: Record<string, unknown>, index: number): AppelRow {
     imsi: field(row, ["imsi"]),
     imei: field(row, ["imei"]),
     localisation:
-      field(row, ["localisation", "localite", "location", "cellId", "cell", "cellName"]) ||
-      loose(row, ["cell", "locali", "site", "cgi"]),
+      field(row, [
+        "localisation",
+        "localite",
+        "location",
+        "locationName",
+        "cellDescription",
+        "cellName",
+        "cellId",
+        "cell",
+        "siteName",
+        "site",
+        "address",
+        "cgi",
+        "lac",
+      ]) || loose(row, ["locali", "location", "cell", "site", "cgi", "lac", "adress"]),
   };
 }
 
@@ -121,7 +134,7 @@ function SensBadge({ value }: Readonly<{ value: string }>) {
   const incoming = value === "E";
   return (
     <span
-      className={`inline-flex min-w-7 justify-center rounded-full px-2 py-0.5 text-[11px] font-bold ${
+      className={`inline-flex min-w-7 justify-center rounded-full px-2 py-0.5 text-xs font-bold ${
         incoming ? "bg-[#e8f6ee] text-[#1f7a46]" : "bg-[#eef4ff] text-yas-navy"
       }`}
     >
@@ -131,19 +144,25 @@ function SensBadge({ value }: Readonly<{ value: string }>) {
 }
 
 const RESULT_COLUMNS: YasColumn<AppelRow>[] = [
-  { key: "appelant", label: "Appelant", emphasis: true },
-  { key: "appele", label: "Appelé", emphasis: true },
-  { key: "identiteAppelee", label: "Identité", emphasis: true },
-  { key: "date", label: "Date", render: (row) => formatDateTime(row.date) },
-  { key: "heure", label: "Heure" },
-  { key: "duree", label: "Durée", emphasis: true },
+  { key: "appelant", label: "Appelant", emphasis: true, width: "10%" },
+  { key: "appele", label: "Appelé", emphasis: true, width: "9%" },
+  { key: "identiteAppelee", label: "Identité", emphasis: true, width: "8%" },
+  {
+    key: "date",
+    label: "Date",
+    width: "8%",
+    render: (row) => formatDateTime(row.date),
+  },
+  { key: "heure", label: "Heure", width: "7%" },
+  { key: "duree", label: "Durée", emphasis: true, width: "6%" },
   {
     key: "type",
     label: "Type",
     align: "center",
+    width: "5%",
     render: (row) =>
       row.type ? (
-        <span className="inline-flex rounded-full bg-[#eef4ff] px-2 py-0.5 text-[11px] font-bold text-yas-navy">
+        <span className="inline-flex rounded-full bg-[#eef4ff] px-2 py-0.5 text-xs font-bold text-yas-navy">
           {row.type}
         </span>
       ) : (
@@ -154,14 +173,12 @@ const RESULT_COLUMNS: YasColumn<AppelRow>[] = [
     key: "sens",
     label: "Sens",
     align: "center",
+    width: "4%",
     render: (row) => <SensBadge value={row.sens} />,
   },
-  { key: "imsi", label: "IMSI" },
-  { key: "imei", label: "IMEI" },
-  {
-    key: "localisation",
-    label: "Localisation",
-  },
+  { key: "imsi", label: "IMSI", width: "11%" },
+  { key: "imei", label: "IMEI", width: "11%" },
+  { key: "localisation", label: "Localisation", width: "21%", wrap: true },
 ];
 
 export default function AppelsPage() {
@@ -552,8 +569,8 @@ export default function AppelsPage() {
         wide
       >
         {results ? (
-          <div className="flex min-h-0 flex-1 flex-col gap-4">
-            <div className="shrink-0 rounded-2xl border border-neutral-100 bg-[#f7f9fc] px-4 py-4 sm:px-5">
+          <div className="flex w-full min-w-0 flex-1 flex-col gap-4">
+            <div className="w-full shrink-0 rounded-2xl border border-neutral-100 bg-[#f7f9fc] px-4 py-4 sm:px-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-bold text-yas-navy">
@@ -589,7 +606,7 @@ export default function AppelsPage() {
             {results.length === 0 ? (
               <EmptyResults message="Aucun appel pour cette recherche." />
             ) : (
-              <YasDataTable columns={RESULT_COLUMNS} rows={results} embedded fit />
+              <YasDataTable columns={RESULT_COLUMNS} rows={results} embedded />
             )}
           </div>
         ) : null}
