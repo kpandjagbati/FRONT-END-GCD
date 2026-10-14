@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { IconChevronLeft, IconHistory } from "@/components/icons";
 import YasLoadingOverlay from "@/components/YasLoadingOverlay";
+import { BULK_POLL_INTERVAL_MS } from "@/lib/bulk-poll";
 import { isDownloadReady, statusClassName } from "@/lib/bulk-treatment";
 import { saveBlob } from "@/lib/downloads";
 import {
@@ -112,7 +113,7 @@ export default function TraitementHistoriquePage() {
     };
   }, []);
 
-  // Tant qu'un job est en cours, rafraîchir le statut (active le ZIP une fois terminé).
+  // Tant qu'un job est en cours : poll 1×/min, stop dès qu'on quitte la page historique.
   useEffect(() => {
     const pending = items.some((job) => job.status === "waiting" || job.status === "pending");
     if (!pending) return;
@@ -124,7 +125,7 @@ export default function TraitementHistoriquePage() {
         if (cancelled) return;
         setItems(next);
       })();
-    }, 3000);
+    }, BULK_POLL_INTERVAL_MS);
 
     return () => {
       cancelled = true;

@@ -7,6 +7,11 @@ import { ExcelButton, PdfRedButton, WordButton } from "@/components/ActionButton
 import { IconChevronLeft } from "@/components/icons";
 import YasLoadingOverlay from "@/components/YasLoadingOverlay";
 import {
+  BULK_POLL_INTERVAL_MS,
+  BULK_POLL_MAX_ATTEMPTS,
+  sleep,
+} from "@/lib/bulk-poll";
+import {
   isDownloadReady,
   jobsFromBulk,
   statusClassName,
@@ -51,9 +56,7 @@ export default function TraitementHistoriqueDetailPage() {
       setLoading(false);
       return;
     }
-    let cancelled = false;
-    const intervalMs = 3000;
-    const maxAttempts = 240;
+    const ac = new AbortController();
     const remembered = listRememberedBulkJobs().find((job) => job.jobId === jobId);
     if (remembered?.outputType) setOutputType(remembered.outputType);
 
@@ -61,21 +64,22 @@ export default function TraitementHistoriqueDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-          if (cancelled) return;
+        for (let attempt = 0; attempt < BULK_POLL_MAX_ATTEMPTS; attempt += 1) {
+          if (ac.signal.aborted) return;
           const data = await getBulkSearch(jobId);
-          if (cancelled) return;
+          if (ac.signal.aborted) return;
           setOutputType(extractBulkOutputType(data));
           setJobs((prev) => jobsFromBulk(data, [], prev));
           setLoading(false);
           if (isBulkSearchComplete(data)) return;
-          await new Promise((resolve) => window.setTimeout(resolve, intervalMs));
+          await sleep(BULK_POLL_INTERVAL_MS, ac.signal);
         }
-        if (!cancelled) {
+        if (!ac.signal.aborted) {
           setError("Le traitement prend plus de temps que prévu. Réessayez dans quelques instants.");
         }
       } catch (cause) {
-        if (cancelled) return;
+        if (ac.signal.aborted) return;
+        if (cause instanceof DOMException && cause.name === "AbortError") return;
         setError(
           cause instanceof ApiError
             ? cause.message
@@ -88,7 +92,7 @@ export default function TraitementHistoriqueDetailPage() {
       }
     })();
     return () => {
-      cancelled = true;
+      ac.abort();
     };
   }, [jobId]);
 

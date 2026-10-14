@@ -16,6 +16,12 @@ import { ExcelButton, PdfRedButton, WordButton } from "@/components/ActionButton
 import YasLoadingOverlay from "@/components/YasLoadingOverlay";
 import { saveBlob, saveBlobsInBrowser } from "@/lib/downloads";
 import {
+  BULK_POLL_INTERVAL_MS,
+  BULK_POLL_MAX_ATTEMPTS,
+  isAbortError,
+  sleep,
+} from "@/lib/bulk-poll";
+import {
   isDownloadReady,
   jobsFromBulk,
   statusClassName,
@@ -35,7 +41,11 @@ import {
   type BulkOutputType,
 } from "@/lib/gcd-api";
 import { frenchDateToIso } from "@/lib/format-date";
-import { rememberBulkJob } from "@/lib/recent-bulk-jobs";
+import {
+  getActiveBulkPoll,
+  rememberBulkJob,
+  setActiveBulkPoll,
+} from "@/lib/recent-bulk-jobs";
 import { useIsClient } from "@/lib/use-client";
 
 const OUTPUT_OPTIONS: { value: BulkOutputType; label: string }[] = [
@@ -46,9 +56,6 @@ const OUTPUT_OPTIONS: { value: BulkOutputType; label: string }[] = [
 
 const CSV_COLUMNS = ["type", "valeur", "date_debut", "date_fin"] as const;
 const TREATMENT_PAGE_SIZE = 10;
-
-/** Aperçu mock désactivé : API bulk-search/v2 branchée. */
-const SHOW_TREATMENT_PREVIEW = false;
 
 const CSV_ROWS = [
   ["msisdn", "22892XXXXXX", "05/04/2022", "15/04/2022"],
@@ -67,20 +74,6 @@ function isCsv(file: File) {
   const name = file.name.toLowerCase();
   return name.endsWith(".csv") || file.type === "text/csv";
 }
-
-const PREVIEW_JOBS: TreatmentJob[] = Array.from({ length: 24 }, (_, index) => {
-  const row = CSV_ROWS[index % CSV_ROWS.length];
-  return {
-    id: `preview-${index}`,
-    itemId: `preview-${index}`,
-    type: row[0],
-    valeur: row[1],
-    dateDebut: row[2],
-    dateFin: row[3],
-    status: index === 0 ? ("ready" as const) : ("pending" as const),
-    fileName: `apercu-${index + 1}.pdf`,
-  };
-});
 
 function csvDelimiter(headerLine: string) {
   return headerLine.includes(";") && headerLine.split(";").length >= headerLine.split(",").length ? ";" : ",";
@@ -173,15 +166,18 @@ function rowsFromCsv(text: string): TreatmentJob[] {
   });
 }
 
-async function waitForBulkSearch(jobId: string, onUpdate: (data: unknown) => void) {
-  // ~12 min : une recherche masse (3 lignes) peut prendre 4–5 min côté API Yas.
-  const maxAttempts = 240;
-  const intervalMs = 3000;
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+async function waitForBulkSearch(
+  jobId: string,
+  onUpdate: (data: unknown) => void,
+  signal?: AbortSignal,
+) {
+  for (let attempt = 0; attempt < BULK_POLL_MAX_ATTEMPTS; attempt += 1) {
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
     const data = await getBulkSearch(jobId);
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
     onUpdate(data);
     if (isBulkSearchComplete(data)) return data;
-    await new Promise((resolve) => window.setTimeout(resolve, intervalMs));
+    await sleep(BULK_POLL_INTERVAL_MS, signal);
   }
   throw new Error(
     "Le traitement prend plus de temps que prévu. Réessayez dans quelques instants, ou vérifiez le statut dans Postman.",
@@ -197,7 +193,6 @@ export default function TraitementPage() {
   const [jobs, setJobs] = useState<TreatmentJob[]>([]);
   const [bulkJobId, setBulkJobId] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [started, setStarted] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [passwordOffer, setPasswordOffer] = useState<{
     filename: string;
@@ -211,7 +206,52 @@ export default function TraitementPage() {
   const tableScrollRef = useRef<HTMLDivElement>(null);
   /** Job affiché dans le panneau résultat (d'autres jobs peuvent tourner en parallèle). */
   const viewingJobIdRef = useRef<string | null>(null);
+  const pollFallbackRef = useRef<TreatmentJob[]>([]);
   const isClient = useIsClient();
+
+  // Reprendre le suivi si on revient sur Traitement (sinon le polling reste arrêté hors page).
+  useEffect(() => {
+    const active = getActiveBulkPoll();
+    if (!active?.jobId) return;
+    viewingJobIdRef.current = active.jobId;
+    setBulkJobId(active.jobId);
+    setOutputType(active.outputType);
+  }, []);
+
+  // Polling UNIQUEMENT tant que la page Traitement est montée (s'arrête en allant sur Appels, etc.).
+  useEffect(() => {
+    if (!bulkJobId) return;
+    const jobId = bulkJobId;
+    const ac = new AbortController();
+    viewingJobIdRef.current = jobId;
+
+    void (async () => {
+      try {
+        const finalData = await waitForBulkSearch(
+          jobId,
+          (data) => {
+            if (ac.signal.aborted) return;
+            if (viewingJobIdRef.current !== jobId) return;
+            setJobs((prev) => jobsFromBulk(data, pollFallbackRef.current, prev));
+          },
+          ac.signal,
+        );
+        if (ac.signal.aborted) return;
+        if (viewingJobIdRef.current !== jobId) return;
+        setJobs((prev) => jobsFromBulk(finalData, pollFallbackRef.current, prev));
+        setActiveBulkPoll(null);
+        setPreviewOpen(true);
+      } catch (cause) {
+        if (ac.signal.aborted || isAbortError(cause)) return;
+        if (viewingJobIdRef.current !== jobId) return;
+        setError(cause instanceof Error ? cause.message : "Le traitement n'a pas abouti.");
+      }
+    })();
+
+    return () => {
+      ac.abort();
+    };
+  }, [bulkJobId]);
 
   useEffect(() => {
     if (!notice) return;
@@ -275,7 +315,6 @@ export default function TraitementPage() {
           viewingJobIdRef.current = "immediate";
           setBulkJobId(null);
           setJobs(immediate);
-          setStarted(true);
           setNotice(true);
           setPreviewOpen(true);
           setFile(null);
@@ -290,31 +329,17 @@ export default function TraitementPage() {
         outputType,
         createdAt: new Date().toISOString(),
       });
+      setActiveBulkPoll({ jobId, fileName: sourceName, outputType });
       clearBulkZipCache(jobId);
+      pollFallbackRef.current = rows;
       viewingJobIdRef.current = jobId;
-      setBulkJobId(jobId);
       setJobs(rows);
-      setStarted(true);
       setListPage(1);
       setNotice(true);
       setPreviewOpen(true);
-      // Formulaire libre : un autre CSV peut être lancé sans attendre la fin du polling.
+      // Formulaire libre + polling géré par useEffect (stop si on quitte la page).
       setFile(null);
-      setLoading(false);
-
-      void waitForBulkSearch(jobId, (data) => {
-        if (viewingJobIdRef.current !== jobId) return;
-        setJobs((prev) => jobsFromBulk(data, rows, prev));
-      })
-        .then((finalData) => {
-          if (viewingJobIdRef.current !== jobId) return;
-          setJobs((prev) => jobsFromBulk(finalData, rows, prev));
-          setPreviewOpen(true);
-        })
-        .catch((cause) => {
-          if (viewingJobIdRef.current !== jobId) return;
-          setError(cause instanceof Error ? cause.message : "Le traitement n'a pas abouti.");
-        });
+      setBulkJobId(jobId);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Le traitement n'a pas abouti.");
     } finally {
@@ -433,14 +458,12 @@ export default function TraitementPage() {
   }
 
   const hasReadyFile = jobs.some((job) => isDownloadReady(job.status));
-  const preview = SHOW_TREATMENT_PREVIEW && !hasReadyFile;
-  const shown = preview ? (started ? PREVIEW_JOBS : []) : jobs;
+  const shown = jobs;
   const pageCount = Math.max(1, Math.ceil(shown.length / TREATMENT_PAGE_SIZE));
   const currentPage = Math.min(listPage, pageCount);
   const pageStart = shown.length === 0 ? 0 : (currentPage - 1) * TREATMENT_PAGE_SIZE + 1;
   const pageEnd = Math.min(currentPage * TREATMENT_PAGE_SIZE, shown.length);
   const pageRows = shown.slice((currentPage - 1) * TREATMENT_PAGE_SIZE, currentPage * TREATMENT_PAGE_SIZE);
-  // Afficher dès que chaque ligne est terminée (plus besoin d'attendre un flag ZIP séparé).
   const allReady =
     shown.length > 0 &&
     shown.every((job) => isDownloadReady(job.status) || job.status === "error") &&
@@ -590,7 +613,6 @@ export default function TraitementPage() {
                 onClick={() => {
                   setFile(null);
                   setJobs([]);
-                  setStarted(false);
                   setPreviewOpen(false);
                   setNotice(false);
                   setError(null);
@@ -752,8 +774,8 @@ export default function TraitementPage() {
                       <tbody>
                         {pageRows.map((job) => {
                           const canDownload = isDownloadReady(job.status) && Boolean(job.itemId);
-                          const downloadBusy = !preview && canDownload && downloading === job.id;
-                          const downloadDisabled = preview || !canDownload || downloading === job.id;
+                          const downloadBusy = canDownload && downloading === job.id;
+                          const downloadDisabled = !canDownload || downloading === job.id;
                           return (
                           <tr key={job.id} className="border-t border-neutral-100 bg-white">
                             <td className="px-2.5 py-2.5 font-semibold text-yas-navy sm:px-4 sm:py-3">
@@ -780,7 +802,7 @@ export default function TraitementPage() {
                                   disabled={downloadDisabled}
                                   loading={downloadBusy}
                                   onClick={() => {
-                                    if (preview || !canDownload) return;
+                                    if (!canDownload) return;
                                     void downloadTreatment(job);
                                   }}
                                 />
@@ -790,7 +812,7 @@ export default function TraitementPage() {
                                   disabled={downloadDisabled}
                                   loading={downloadBusy}
                                   onClick={() => {
-                                    if (preview || !canDownload) return;
+                                    if (!canDownload) return;
                                     void downloadTreatment(job);
                                   }}
                                 />
@@ -800,7 +822,7 @@ export default function TraitementPage() {
                                   disabled={downloadDisabled}
                                   loading={downloadBusy}
                                   onClick={() => {
-                                    if (preview || !canDownload) return;
+                                    if (!canDownload) return;
                                     void downloadTreatment(job);
                                   }}
                                 />
@@ -834,13 +856,9 @@ export default function TraitementPage() {
                     <div className="flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                       <button
                         type="button"
-                        disabled={
-                          preview
-                            ? false
-                            : !allReady || downloading === "all-zip" || downloading === "all-files"
-                        }
+                        disabled={!allReady || downloading === "all-zip" || downloading === "all-files"}
                         onClick={() => {
-                          if (preview || !allReady) return;
+                          if (!allReady) return;
                           void downloadAllAsZip(shown);
                         }}
                         className="btn h-10 min-h-10 rounded-xl border-none bg-yas-navy px-5 font-semibold text-white hover:bg-[#012d66] disabled:bg-neutral-200 disabled:text-neutral-400 disabled:hover:bg-neutral-200"
@@ -849,13 +867,9 @@ export default function TraitementPage() {
                       </button>
                       <button
                         type="button"
-                        disabled={
-                          preview
-                            ? false
-                            : !allReady || downloading === "all-zip" || downloading === "all-files"
-                        }
+                        disabled={!allReady || downloading === "all-zip" || downloading === "all-files"}
                         onClick={() => {
-                          if (preview || !allReady) return;
+                          if (!allReady) return;
                           void downloadAllAsFiles(shown);
                         }}
                         className="btn h-10 min-h-10 rounded-xl border-none bg-yas-yellow px-5 font-semibold text-yas-navy hover:bg-[#f0ce00] disabled:bg-neutral-200 disabled:text-neutral-400 disabled:hover:bg-neutral-200"
