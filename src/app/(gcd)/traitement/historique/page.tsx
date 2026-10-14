@@ -10,6 +10,8 @@ import {
   ApiError,
   clearBulkZipCache,
   downloadBulkSearch,
+  enrichRecentBulkFromDetail,
+  getBulkSearch,
   listRecentBulkSearches,
   parseRecentBulkSearches,
   type RecentBulkSearch,
@@ -35,6 +37,31 @@ function formatCreatedAt(value: string) {
   });
 }
 
+function fromLocal(): RecentBulkSearch[] {
+  return listRememberedBulkJobs().map((job) => ({
+    jobId: job.jobId,
+    status: "pending" as const,
+    statusLabel: "En cours",
+    outputType: job.outputType,
+    fileName: job.fileName,
+    createdAt: job.createdAt,
+    itemCount: null,
+  }));
+}
+
+async function refreshStatuses(list: RecentBulkSearch[]) {
+  return Promise.all(
+    list.map(async (job) => {
+      try {
+        const data = await getBulkSearch(job.jobId);
+        return enrichRecentBulkFromDetail(job, data);
+      } catch {
+        return job;
+      }
+    }),
+  );
+}
+
 export default function TraitementHistoriquePage() {
   const [items, setItems] = useState<RecentBulkSearch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,55 +71,66 @@ export default function TraitementHistoriquePage() {
   useEffect(() => {
     let cancelled = false;
 
-    function fromLocal(): RecentBulkSearch[] {
-      return listRememberedBulkJobs().map((job) => ({
-        jobId: job.jobId,
-        status: "pending" as const,
-        statusLabel: "En cours / récent",
-        outputType: job.outputType,
-        fileName: job.fileName,
-        createdAt: job.createdAt,
-        itemCount: null,
-      }));
-    }
-
     (async () => {
       setLoading(true);
       setError(null);
+      let base: RecentBulkSearch[] = [];
       try {
         const data = await listRecentBulkSearches();
         if (cancelled) return;
         const remote = parseRecentBulkSearches(data);
-        if (remote.length > 0) {
-          setItems(remote);
-          return;
-        }
-        // Endpoint OK mais liste vide : compléter avec les jobs lancés cette session.
-        setItems(fromLocal());
+        base = remote.length > 0 ? remote : fromLocal();
       } catch (cause) {
         if (cancelled) return;
-        // Endpoint pas encore dispo (Arif) : afficher au moins les traitements lancés localement.
-        const local = fromLocal();
-        setItems(local);
-        if (local.length === 0) {
-          const message =
+        base = fromLocal();
+        if (base.length === 0) {
+          setError(
             cause instanceof ApiError
               ? cause.message
               : cause instanceof Error
                 ? cause.message
-                : "Impossible de charger les traitements récents.";
-          setError(message);
-        } else {
-          setError(null);
+                : "Impossible de charger les traitements récents.",
+          );
         }
-      } finally {
-        if (!cancelled) setLoading(false);
       }
+
+      if (cancelled) return;
+      if (base.length === 0) {
+        setItems([]);
+        setLoading(false);
+        return;
+      }
+
+      const enriched = await refreshStatuses(base);
+      if (cancelled) return;
+      setItems(enriched);
+      setLoading(false);
     })();
+
     return () => {
       cancelled = true;
     };
   }, []);
+
+  // Tant qu'un job est en cours, rafraîchir le statut (active le ZIP une fois terminé).
+  useEffect(() => {
+    const pending = items.some((job) => job.status === "waiting" || job.status === "pending");
+    if (!pending) return;
+
+    let cancelled = false;
+    const timer = window.setInterval(() => {
+      void (async () => {
+        const next = await refreshStatuses(items);
+        if (cancelled) return;
+        setItems(next);
+      })();
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [items]);
 
   async function downloadZip(job: RecentBulkSearch) {
     if (downloading || !isDownloadReady(job.status)) return;
@@ -180,7 +218,6 @@ export default function TraitementHistoriquePage() {
                         >
                           {job.fileName}
                         </Link>
-                        <p className="mt-0.5 truncate text-[11px] text-neutral-400">{job.jobId}</p>
                       </td>
                       <td className="px-3 py-3 text-neutral-700 sm:px-4">
                         {formatCreatedAt(job.createdAt)}

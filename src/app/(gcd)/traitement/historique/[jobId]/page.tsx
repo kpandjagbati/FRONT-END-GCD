@@ -26,6 +26,7 @@ import {
   readPasswordFromBlob,
   type BulkOutputType,
 } from "@/lib/gcd-api";
+import { listRememberedBulkJobs } from "@/lib/recent-bulk-jobs";
 
 const PAGE_SIZE = 10;
 
@@ -53,6 +54,8 @@ export default function TraitementHistoriqueDetailPage() {
     let cancelled = false;
     const intervalMs = 3000;
     const maxAttempts = 240;
+    const remembered = listRememberedBulkJobs().find((job) => job.jobId === jobId);
+    if (remembered?.outputType) setOutputType(remembered.outputType);
 
     (async () => {
       setLoading(true);
@@ -206,7 +209,6 @@ export default function TraitementHistoriqueDetailPage() {
         </Link>
         <div className="min-w-0">
           <h1 className="text-lg font-bold text-yas-navy sm:text-xl">Détail du traitement</h1>
-          <p className="mt-0.5 truncate text-xs font-medium text-neutral-500 sm:text-sm">{jobId}</p>
         </div>
       </div>
 

@@ -556,6 +556,53 @@ export function extractBulkOutputType(data: unknown): BulkOutputType {
   return "pdf";
 }
 
+function bulkStatusLabel(status: BulkSearchItemStatus) {
+  if (status === "waiting") return "En attente";
+  if (status === "pending") return "En cours";
+  if (status === "ready") return "Terminé";
+  if (status === "partial") return "Terminé avec erreurs";
+  return "Échoué";
+}
+
+/** Met à jour statut / lignes d'une entrée historique via le GET détail du job. */
+export function enrichRecentBulkFromDetail(
+  entry: RecentBulkSearch,
+  data: unknown,
+): RecentBulkSearch {
+  const items = parseBulkSearchItems(data);
+  const record = data && typeof data === "object" ? (data as Record<string, unknown>) : {};
+  const nested =
+    "data" in record && record.data && typeof record.data === "object"
+      ? (record.data as Record<string, unknown>)
+      : record;
+  const statusRaw = field(nested, ["status", "state", "jobStatus", "processingStatus"]);
+  let status = statusRaw ? bulkItemStatus(statusRaw) : entry.status;
+
+  if (!statusRaw) {
+    if (isBulkSearchComplete(data)) {
+      if (items.length > 0 && items.every((item) => item.status === "error")) status = "error";
+      else if (items.some((item) => item.status === "partial" || item.status === "error"))
+        status = "partial";
+      else status = "ready";
+    } else if (items.some((item) => item.status === "pending" || item.status === "waiting")) {
+      status = items.some((item) => item.status === "pending") ? "pending" : "waiting";
+    }
+  }
+
+  // Job terminé côté API mais mapping item encore flou → ZIP téléchargeable.
+  if (isBulkSearchComplete(data) && status !== "error" && status !== "partial") {
+    status = "ready";
+  }
+
+  return {
+    ...entry,
+    status,
+    statusLabel: bulkStatusLabel(status),
+    itemCount: items.length > 0 ? items.length : entry.itemCount,
+    outputType: extractBulkOutputType(data) || entry.outputType,
+  };
+}
+
 async function bulkDownloadBlob(path: string) {
   const token = getSessionToken();
   if (!token) throw new ApiError("Connectez-vous pour utiliser le service.");
