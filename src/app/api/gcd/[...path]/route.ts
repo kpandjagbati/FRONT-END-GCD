@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 
-const API_URL = (process.env.GCD_API_URL ?? "https://gcd-api.yas.tg").replace(/\/$/, "");
+const API_URL = (process.env.GCD_API_URL ?? "http://apps-prp.togocom.tg:31495").replace(/\/$/, "");
 const TIMEOUT_MS = 300_000;
 
 export const dynamic = "force-dynamic";
@@ -50,13 +50,21 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
     });
   } catch (error) {
     const timedOut = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+    const cause = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    const unreachable =
+      /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|EHOSTUNREACH|ETIMEDOUT|fetch failed|socket hang up/i.test(
+        cause,
+      );
     return Response.json(
       {
         status: {
           code: 504,
           description: timedOut
             ? "Le serveur a mis trop de temps à répondre."
-            : "Le serveur n'a pas répondu correctement.",
+            : unreachable
+              ? "Impossible de joindre l'API GCD (réseau/VPN/DNS). Vérifiez la connexion VPN puis réessayez."
+              : "Le serveur n'a pas répondu correctement.",
+          detail: cause,
         },
       },
       { status: 504 },
