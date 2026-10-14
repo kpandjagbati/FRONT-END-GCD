@@ -22,6 +22,7 @@ import { frenchDateToIso } from "@/lib/format-date";
 import { useIsClient } from "@/lib/use-client";
 
 const CSV_COLUMNS = ["type", "valeur", "date_debut", "date_fin"] as const;
+const TREATMENT_PAGE_SIZE = 10;
 
 /** Aperçu mock désactivé : API bulk-search/v2 branchée. */
 const SHOW_TREATMENT_PREVIEW = false;
@@ -202,6 +203,7 @@ export default function TraitementPage() {
     password?: string;
   } | null>(null);
   const [listScrollDir, setListScrollDir] = useState<"down" | "up" | null>(null);
+  const [listPage, setListPage] = useState(1);
   const inputRef = useRef<HTMLInputElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const isClient = useIsClient();
@@ -246,6 +248,7 @@ export default function TraitementPage() {
     setBulkJobId(null);
     setStarted(false);
     setPreviewOpen(false);
+    setListPage(1);
     setFile(next);
   }
 
@@ -263,6 +266,7 @@ export default function TraitementPage() {
       }
       setJobs(rows);
       setStarted(true);
+      setListPage(1);
       setBulkJobId(null);
       const uploadFile = new File([uploadText], file.name, { type: "text/csv" });
       const created = await bulkSearch(uploadFile);
@@ -402,6 +406,11 @@ export default function TraitementPage() {
   const hasReadyFile = jobs.some((job) => job.status === "ready");
   const preview = SHOW_TREATMENT_PREVIEW && !hasReadyFile;
   const shown = preview ? (started ? PREVIEW_JOBS : []) : jobs;
+  const pageCount = Math.max(1, Math.ceil(shown.length / TREATMENT_PAGE_SIZE));
+  const currentPage = Math.min(listPage, pageCount);
+  const pageStart = shown.length === 0 ? 0 : (currentPage - 1) * TREATMENT_PAGE_SIZE + 1;
+  const pageEnd = Math.min(currentPage * TREATMENT_PAGE_SIZE, shown.length);
+  const pageRows = shown.slice((currentPage - 1) * TREATMENT_PAGE_SIZE, currentPage * TREATMENT_PAGE_SIZE);
   // Afficher dès que chaque ligne est terminée (plus besoin d'attendre un flag ZIP séparé).
   const allReady =
     shown.length > 0 &&
@@ -448,7 +457,11 @@ export default function TraitementPage() {
       observer?.disconnect();
       window.removeEventListener("resize", updateListScrollDir);
     };
-  }, [previewOpen, shown.length]);
+  }, [previewOpen, shown.length, currentPage]);
+
+  useEffect(() => {
+    if (listPage > pageCount) setListPage(pageCount);
+  }, [listPage, pageCount]);
 
   return (
     <section className="flex min-h-0 flex-1 items-center justify-center overflow-x-hidden overflow-y-auto py-2">
@@ -626,9 +639,45 @@ export default function TraitementPage() {
                     Résultat du traitement
                   </h2>
                   <div className="mt-3 h-1.5 w-16 rounded-full bg-yas-yellow" />
-                  <p className="mt-3 text-sm font-medium text-neutral-500">
-                    {shown.length} ligne{shown.length > 1 ? "s" : ""} — faites défiler pour tout consulter.
-                  </p>
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm font-medium text-neutral-500">
+                      {shown.length} ligne{shown.length > 1 ? "s" : ""}
+                      {pageCount > 1 ? ` · page ${currentPage}/${pageCount}` : ""}
+                    </p>
+                    {shown.length > TREATMENT_PAGE_SIZE ? (
+                      <div className="relative z-10 flex max-w-full items-center self-start overflow-hidden rounded-full border border-neutral-200 bg-white text-xs text-neutral-500 sm:text-sm">
+                        <button
+                          type="button"
+                          aria-label="Page précédente"
+                          onClick={() =>
+                            setListPage((value) => {
+                              const current = Math.min(value, pageCount);
+                              return current <= 1 ? pageCount : current - 1;
+                            })
+                          }
+                          className="relative z-10 cursor-pointer select-none px-3 py-1.5 text-neutral-500 transition hover:bg-neutral-100 hover:text-yas-navy"
+                        >
+                          ‹
+                        </button>
+                        <span className="border-x border-neutral-200 px-3 py-1.5 whitespace-nowrap font-medium text-neutral-600">
+                          {pageStart} - {pageEnd} sur {shown.length}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label="Page suivante"
+                          onClick={() =>
+                            setListPage((value) => {
+                              const current = Math.min(value, pageCount);
+                              return current >= pageCount ? 1 : current + 1;
+                            })
+                          }
+                          className="relative z-10 cursor-pointer select-none px-3 py-1.5 text-neutral-500 transition hover:bg-neutral-100 hover:text-yas-navy"
+                        >
+                          ›
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="relative mt-4 min-h-0 flex-1 px-4 sm:px-6">
@@ -647,7 +696,7 @@ export default function TraitementPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {shown.map((job) => {
+                        {pageRows.map((job) => {
                           const pdfEnabled = job.status === "ready" && Boolean(job.itemId);
                           return (
                           <tr key={job.id} className="border-t border-neutral-100 bg-white">
@@ -772,37 +821,31 @@ export default function TraitementPage() {
                 </button>
                 <p className="pr-8 font-bold">Mot de passe PDF</p>
                 {passwordOffer.password ? (
-                  <p className="mt-1.5 font-medium leading-relaxed text-neutral-600">
-                    Mot de passe :{" "}
-                    <span className="font-mono font-bold text-yas-navy">{passwordOffer.password}</span>
-                  </p>
+                  <>
+                    <p className="mt-1.5 font-medium leading-relaxed text-neutral-600">
+                      Mot de passe :{" "}
+                      <span className="font-mono font-bold text-yas-navy">{passwordOffer.password}</span>
+                    </p>
+                    <p className="mt-1 text-xs font-medium text-neutral-500">
+                      Le fichier .txt a déjà été téléchargé avec le PDF.
+                    </p>
+                    <div className="mt-3">
+                      <button
+                        type="button"
+                        className="btn h-9 min-h-9 rounded-xl border-none bg-yas-navy px-4 text-xs font-semibold text-white hover:bg-[#012d66]"
+                        onClick={() => {
+                          void navigator.clipboard?.writeText(passwordOffer.password || "");
+                        }}
+                      >
+                        Copier le mot de passe
+                      </button>
+                    </div>
+                  </>
                 ) : (
                   <p className="mt-1.5 font-medium leading-relaxed text-neutral-600">
-                    Ouvre le PDF avec le fichier .txt ci-dessous.
+                    Le fichier .txt a été téléchargé avec le PDF — ouvre-le pour lire le mot de passe.
                   </p>
                 )}
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {passwordOffer.password ? (
-                    <button
-                      type="button"
-                      className="btn h-9 min-h-9 rounded-xl border border-yas-navy/20 bg-white px-4 text-xs font-semibold text-yas-navy hover:bg-neutral-50"
-                      onClick={() => {
-                        void navigator.clipboard?.writeText(passwordOffer.password || "");
-                      }}
-                    >
-                      Copier le mot de passe
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="btn h-9 min-h-9 rounded-xl border-none bg-yas-navy px-4 text-xs font-semibold text-white hover:bg-[#012d66]"
-                    onClick={() => {
-                      saveBlob(passwordOffer.filename, passwordOffer.blob);
-                    }}
-                  >
-                    Télécharger le .txt
-                  </button>
-                </div>
               </div>
             </aside>,
             document.body,

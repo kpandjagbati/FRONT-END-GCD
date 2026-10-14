@@ -347,7 +347,8 @@ body {
   top: 4.75rem;
   right: 0.75rem;
   left: 0.75rem;
-  z-index: 90;
+  /* Au-dessus des modales (ex. Traitements z-95) pour rester cliquable (copier MDP). */
+  z-index: 110;
   width: auto;
   max-width: 22.5rem;
   margin-left: auto;
