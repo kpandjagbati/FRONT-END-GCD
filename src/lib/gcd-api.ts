@@ -1,6 +1,7 @@
 import { frenchDateToIso } from "@/lib/format-date";
 import { calledNumberDigits } from "@/lib/search-guards";
 import {
+  clearSession,
   getSessionPassword,
   getSessionToken,
   getSessionUsername,
@@ -208,12 +209,23 @@ async function gcdFetch<T>(path: string, init: RequestInit = {}, auth = true, di
   if (auth && !didRefresh && isAuthRejected(response, payload as Envelope<unknown> | null, raw)) {
     const refreshed = await refreshSessionToken();
     if (refreshed) return gcdFetch<T>(path, init, auth, true);
+    clearSession();
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("gcd-auth-required"));
+    }
   }
 
   const code = payload?.status?.code;
   const failed = !response.ok || (typeof code === "number" && code >= 400);
   if (failed) {
-    throw new ApiError(errorFromPayload(response, payload as Envelope<unknown> | null, raw));
+    const message = errorFromPayload(response, payload as Envelope<unknown> | null, raw);
+    if (auth && /connectez-vous|session expir|jeton invalide|non autoris/i.test(message)) {
+      clearSession();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("gcd-auth-required"));
+      }
+    }
+    throw new ApiError(message);
   }
   return (payload?.data ?? payload) as T;
 }
