@@ -45,7 +45,7 @@ const CRITERIA = [
     desc: "Rechercher les appels d'un numéro.",
     image: "/illustrations/appels.svg",
     icon: IconPhone,
-    placeholder: "Ex. 22870210044",
+    placeholder: "Ex. 70210044",
   },
   {
     id: "imei",
@@ -482,9 +482,9 @@ export default function AppelsPage() {
                         onChange={(event) => setQuery(event.target.value)}
                         autoFocus
                       />
-                      {active.id === "appele" || active.id === "numero" ? (
+                      {active.id === "appele" ? (
                         <p className="mt-1.5 text-xs font-medium text-neutral-500">
-                          L&apos;indicatif du pays est obligatoire : 228.
+                          Ajouter l&apos;indicatif de votre pays
                         </p>
                       ) : null}
                     </div>

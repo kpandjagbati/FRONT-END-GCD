@@ -11,21 +11,28 @@ export function calledNumberDigits(value: string) {
   return digits;
 }
 
-export function validateMsisdnWithCountry(value: string, label = "numéro") {
+export function validateMsisdn(value: string, label = "numéro") {
   const digits = calledNumberDigits(value);
   if (!digits) return `Renseignez le ${label}.`;
-  if (!digits.startsWith("228") || digits.length < 11) {
-    return `Le ${label} doit commencer par l'indicatif du pays (228).`;
+  if (digits.length < 8) {
+    return `Le ${label} doit contenir au moins 8 chiffres.`;
   }
   return null;
 }
 
+/** Numéro appelé : indicatif pays requis (pas forcément 228). */
 export function validateCalledNumber(value: string) {
-  return validateMsisdnWithCountry(value, "numéro appelé");
+  const digits = calledNumberDigits(value);
+  if (!digits) return "Renseignez le numéro appelé.";
+  // Indicatif international : au moins 10 chiffres (indicatif + numéro local).
+  if (digits.length < 10) {
+    return "Ajouter l'indicatif de votre pays.";
+  }
+  return null;
 }
 
 export function validateCallerNumber(value: string) {
-  return validateMsisdnWithCountry(value, "numéro");
+  return validateMsisdn(value, "numéro");
 }
 
 export function validatePeriod(debut: string, fin: string) {
