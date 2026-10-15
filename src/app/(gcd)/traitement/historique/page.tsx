@@ -113,7 +113,7 @@ export default function TraitementHistoriquePage() {
     };
   }, []);
 
-  // Tant qu'un job est en cours : poll 1×/min, stop dès qu'on quitte la page historique.
+  // Tant qu'un job est en cours : poll toutes les 15 s, stop dès qu'on quitte la page historique.
   useEffect(() => {
     const pending = items.some((job) => job.status === "waiting" || job.status === "pending");
     if (!pending) return;
