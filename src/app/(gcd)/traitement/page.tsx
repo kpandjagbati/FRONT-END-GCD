@@ -55,7 +55,7 @@ const OUTPUT_OPTIONS: { value: BulkOutputType; label: string }[] = [
 ];
 
 const CSV_COLUMNS = ["type", "valeur", "date_debut", "date_fin"] as const;
-const TREATMENT_PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 
 const CSV_ROWS = [
   ["msisdn", "22892XXXXXX", "05/04/2022", "15/04/2022"],
@@ -201,6 +201,7 @@ export default function TraitementPage() {
   } | null>(null);
   const [listScrollDir, setListScrollDir] = useState<"down" | "up" | null>(null);
   const [listPage, setListPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [outputType, setOutputType] = useState<BulkOutputType>("pdf");
   const inputRef = useRef<HTMLInputElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
@@ -459,11 +460,11 @@ export default function TraitementPage() {
 
   const hasReadyFile = jobs.some((job) => isDownloadReady(job.status));
   const shown = jobs;
-  const pageCount = Math.max(1, Math.ceil(shown.length / TREATMENT_PAGE_SIZE));
+  const pageCount = Math.max(1, Math.ceil(shown.length / pageSize));
   const currentPage = Math.min(listPage, pageCount);
-  const pageStart = shown.length === 0 ? 0 : (currentPage - 1) * TREATMENT_PAGE_SIZE + 1;
-  const pageEnd = Math.min(currentPage * TREATMENT_PAGE_SIZE, shown.length);
-  const pageRows = shown.slice((currentPage - 1) * TREATMENT_PAGE_SIZE, currentPage * TREATMENT_PAGE_SIZE);
+  const pageStart = shown.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const pageEnd = Math.min(currentPage * pageSize, shown.length);
+  const pageRows = shown.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const allReady =
     shown.length > 0 &&
     shown.every((job) => isDownloadReady(job.status) || job.status === "error") &&
@@ -538,7 +539,7 @@ export default function TraitementPage() {
               <IconWarning className="size-4" />
             </span>
             <div className="min-w-0 text-left">
-              <p className="text-sm font-bold text-yas-navy">Fichier CSV uniquement</p>
+              <p className="text-sm font-bold text-yas-navy">Fichier CSV avec séparateur ;</p>
               <p className="mt-0.5 text-xs leading-relaxed text-neutral-600">
                 Le fichier doit contenir exactement ces quatre colonnes :
               </p>
@@ -654,7 +655,7 @@ export default function TraitementPage() {
 
           <div className="mt-4 flex flex-col items-stretch gap-2.5 sm:flex-row sm:flex-wrap sm:items-end sm:justify-center sm:gap-3">
             <label className="flex w-full flex-col gap-1.5 text-left sm:w-auto">
-              <span className="text-xs font-semibold text-yas-navy">Type de téléchargement</span>
+              <span className="text-xs font-semibold text-yas-navy">Type de document à télécharger</span>
               <select
                 value={outputType}
                 disabled={loading}
@@ -719,7 +720,8 @@ export default function TraitementPage() {
                       {shown.length} ligne{shown.length > 1 ? "s" : ""}
                       {pageCount > 1 ? ` · page ${currentPage}/${pageCount}` : ""}
                     </p>
-                    {shown.length > TREATMENT_PAGE_SIZE ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                    {shown.length > pageSize ? (
                       <div className="relative z-10 flex max-w-full items-center self-start overflow-hidden rounded-full border border-neutral-200 bg-white text-xs text-neutral-500 sm:text-sm">
                         <button
                           type="button"
@@ -752,6 +754,25 @@ export default function TraitementPage() {
                         </button>
                       </div>
                     ) : null}
+                      <label className="flex items-center gap-2 text-xs font-medium text-neutral-500">
+                        <span>Lignes</span>
+                        <select
+                          aria-label="Nombre de lignes par page"
+                          value={pageSize}
+                          onChange={(event) => {
+                            setPageSize(Number(event.target.value));
+                            setListPage(1);
+                          }}
+                          className="h-8 rounded-full border border-neutral-200 bg-white px-3 text-xs font-semibold text-yas-navy outline-none"
+                        >
+                          {PAGE_SIZE_OPTIONS.map((size) => (
+                            <option key={size} value={size}>
+                              {size}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
                   </div>
                 </div>
 

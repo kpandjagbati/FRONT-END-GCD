@@ -413,7 +413,7 @@ export default function AppelsPage() {
                 key={item.id}
                 type="button"
                 onClick={() => openCard(item.id)}
-                className="flex flex-col overflow-hidden rounded-2xl bg-white text-left shadow-[0_12px_32px_rgba(1,55,125,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(1,55,125,0.12)]"
+                className="flex cursor-pointer flex-col overflow-hidden rounded-2xl bg-white text-left shadow-[0_12px_32px_rgba(1,55,125,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(1,55,125,0.12)]"
               >
                 <span className="flex items-center justify-center px-2 pt-4 sm:px-3 sm:pt-7">
                   <span className="grid size-12 place-items-center rounded-2xl bg-[#eef4ff] text-yas-navy sm:size-16">

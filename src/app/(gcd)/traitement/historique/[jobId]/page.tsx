@@ -33,7 +33,7 @@ import {
 } from "@/lib/gcd-api";
 import { listRememberedBulkJobs } from "@/lib/recent-bulk-jobs";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 
 export default function TraitementHistoriqueDetailPage() {
   const params = useParams<{ jobId: string }>();
@@ -45,6 +45,7 @@ export default function TraitementHistoriqueDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [listPage, setListPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [passwordOffer, setPasswordOffer] = useState<{
     filename: string;
     content: string;
@@ -191,9 +192,9 @@ export default function TraitementHistoriqueDetailPage() {
     }
   }
 
-  const pageCount = Math.max(1, Math.ceil(jobs.length / PAGE_SIZE));
+  const pageCount = Math.max(1, Math.ceil(jobs.length / pageSize));
   const currentPage = Math.min(listPage, pageCount);
-  const pageRows = jobs.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pageRows = jobs.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const allReady =
     jobs.length > 0 && jobs.every((job) => isDownloadReady(job.status) || job.status === "error");
   const canDownloadAll = jobs.some((job) => isDownloadReady(job.status) && job.itemId);
@@ -235,7 +236,8 @@ export default function TraitementHistoriqueDetailPage() {
             {jobs.length} ligne{jobs.length > 1 ? "s" : ""}
             {pageCount > 1 ? ` · page ${currentPage}/${pageCount}` : ""}
           </p>
-          {jobs.length > PAGE_SIZE ? (
+          <div className="flex flex-wrap items-center gap-2">
+          {jobs.length > pageSize ? (
             <div className="flex overflow-hidden rounded-full border border-neutral-200 bg-white text-xs text-neutral-500">
               <button
                 type="button"
@@ -251,7 +253,7 @@ export default function TraitementHistoriqueDetailPage() {
                 ‹
               </button>
               <span className="border-x border-neutral-200 px-3 py-1.5 font-medium text-neutral-600">
-                {(currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, jobs.length)}{" "}
+                {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, jobs.length)}{" "}
                 sur {jobs.length}
               </span>
               <button
@@ -269,6 +271,25 @@ export default function TraitementHistoriqueDetailPage() {
               </button>
             </div>
           ) : null}
+            <label className="flex items-center gap-2 text-xs font-medium text-neutral-500">
+              <span>Lignes</span>
+              <select
+                aria-label="Nombre de lignes par page"
+                value={pageSize}
+                onChange={(event) => {
+                  setPageSize(Number(event.target.value));
+                  setListPage(1);
+                }}
+                className="h-8 rounded-full border border-neutral-200 bg-white px-3 text-xs font-semibold text-yas-navy outline-none"
+              >
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
 
         <div className="overflow-x-auto">

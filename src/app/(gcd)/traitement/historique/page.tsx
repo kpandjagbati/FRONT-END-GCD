@@ -181,7 +181,7 @@ export default function TraitementHistoriquePage() {
         <div className="rounded-2xl border border-dashed border-yas-navy/15 bg-white px-4 py-10 text-center">
           <p className="text-sm font-semibold text-yas-navy">Aucun traitement récent</p>
           <p className="mt-1 text-xs text-neutral-500">
-            Les traitements apparaîtront ici dès que l’API historique sera disponible.
+            Vos traitements apparaîtront ici et restent disponibles pendant 7 jours.
           </p>
           <Link
             href="/traitement"

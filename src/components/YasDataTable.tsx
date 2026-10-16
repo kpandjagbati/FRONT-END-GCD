@@ -1,8 +1,9 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 
 export type YasColumn<T> = {
   key: keyof T & string;
@@ -37,6 +38,7 @@ export default function YasDataTable<T extends { id: string }>({
 }>) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(10);
   const rowsSignature = rows.map((row) => row.id).join("|");
 
   useEffect(() => {
@@ -53,11 +55,11 @@ export default function YasDataTable<T extends { id: string }>({
   }, [columns, query, rows]);
 
   const total = filtered.length;
-  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const currentPage = Math.min(page, pageCount);
-  const start = total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
-  const end = Math.min(currentPage * PAGE_SIZE, total);
-  const visible = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const start = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const end = Math.min(currentPage * pageSize, total);
+  const visible = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const tight = compact || fit;
   const cellPad = fit
     ? "px-1 py-1.5 sm:px-1.5"
@@ -79,13 +81,14 @@ export default function YasDataTable<T extends { id: string }>({
       }
     >
       <div className="flex flex-col gap-2.5 border-b border-neutral-100 bg-[#fbfcfe] px-2.5 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:px-5 sm:py-3.5">
+        <div className="flex flex-wrap items-center gap-2">
         <div className="relative z-10 flex max-w-full items-center self-start overflow-hidden rounded-full border border-neutral-200 bg-white text-xs text-neutral-500 sm:text-sm">
           <button
             type="button"
             aria-label="Page précédente"
             onClick={() =>
               setPage((value) => {
-                const count = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+                const count = Math.max(1, Math.ceil(filtered.length / pageSize));
                 const current = Math.min(value, count);
                 return current <= 1 ? count : current - 1;
               })
@@ -102,7 +105,7 @@ export default function YasDataTable<T extends { id: string }>({
             aria-label="Page suivante"
             onClick={() =>
               setPage((value) => {
-                const count = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+                const count = Math.max(1, Math.ceil(filtered.length / pageSize));
                 const current = Math.min(value, count);
                 return current >= count ? 1 : current + 1;
               })
@@ -111,6 +114,25 @@ export default function YasDataTable<T extends { id: string }>({
           >
             ›
           </button>
+        </div>
+        <label className="flex items-center gap-2 text-xs font-medium text-neutral-500">
+          <span>Lignes</span>
+          <select
+            aria-label="Nombre de lignes par page"
+            value={pageSize}
+            onChange={(event) => {
+              setPageSize(Number(event.target.value));
+              setPage(1);
+            }}
+            className="h-9 rounded-full border border-neutral-200 bg-white px-3 text-xs font-semibold text-yas-navy outline-none focus:border-yas-navy"
+          >
+            {PAGE_SIZE_OPTIONS.map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+        </label>
         </div>
         <input
           type="search"
